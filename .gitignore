@@ -30,6 +30,9 @@ dist-ssr
 Cargo.lock
 coverage/
 
+# Web server local data (saves / settings / profiles)
+/ofm-web-data
+
 # Claude local settings
 .claude/settings.local.json
 

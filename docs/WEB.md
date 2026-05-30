@@ -4,10 +4,10 @@ OpenFootManager ships as a **Tauri desktop app**, but the same game can run in a
 **web browser** through a thin client–server split. This document explains how
 that works, how to run it, and how to keep it in sync with upstream.
 
-> Status: **early / foundational.** The full new-game → team-selection →
-> dashboard → advance-day → save/load loop works in the browser today. Several
-> management screens and the interactive live-match view are not wired up yet —
-> see [Command coverage](#command-coverage) and [Limitations](#known-limitations).
+> Status: **full command parity.** All 81 commands the desktop app exposes are
+> mirrored by the web server, including the interactive live-match flow, season
+> rollover, transfers, contracts, scouting, training and stats — see
+> [Command coverage](#command-coverage).
 
 ## Why this design
 
@@ -108,20 +108,30 @@ npm run dev:web              # http://localhost:1430
 
 ## Command coverage
 
-Commands not yet mirrored return HTTP `501` with
-`{"error":"be.error.web.commandNotImplemented","command":"<name>"}`, which the UI
-surfaces as a clear "not available in the web build" message rather than crashing.
+**All 81 desktop commands are mirrored.** This is verified mechanically — the
+command list in `src-tauri/src/lib.rs` (`invoke_handler!`) and the dispatch table
+in `ofm_server` match exactly:
 
-**Implemented (web v1):** world list/import, new game, team selection, save /
-load / delete / list saves, active game, save game, exit to menu, advance day
-(`advance_time`, `advance_time_with_mode`, `skip_to_match_day`), settings, clear
-saves, jobs, finance snapshot + board/sponsor/marketing actions, manager
-profiles (CRUD).
+```bash
+# desktop command names
+awk '/invoke_handler/,/\]\)/' src-tauri/src/lib.rs | grep -oE '^\s+[a-z_]+,?$' \
+  | tr -d ' ,' | sort -u > /tmp/desktop.txt
+# server dispatch arms
+grep -oE '"[a-z_]+" =>' src-tauri/crates/ofm_server/src/commands/mod.rs \
+  | sed 's/"//g; s/ =>//' | sort -u > /tmp/server.txt
+comm -23 /tmp/desktop.txt /tmp/server.txt   # → empty = full parity
+```
 
-**Not yet mirrored:** squad/tactics/training/transfers/scouting/staff/messages
-mutations, season rollover, stats overviews, the interactive live-match commands
-(`start_live_match`, `step_live_match`, …), and `export_world_database` (relies
-on a native save dialog).
+Covered areas: world list/import/export, new game, team selection, saves
+(create/load/delete/list/save), time advancement, **interactive live matches**
+(`start/step/apply_command/snapshot/finish`, team talks, press conferences),
+squad/tactics/training, transfers & scouting, contracts & renewals, staff,
+finances, inbox/messages, season rollover & awards, player/team stats, settings,
+jobs, and manager profiles.
+
+Any future command added upstream that has not yet been mirrored returns HTTP
+`501` with `{"error":"be.error.web.commandNotImplemented","command":"<name>"}`,
+which the UI surfaces as a clear message rather than crashing.
 
 ## Adding a command (when syncing upstream)
 
@@ -139,10 +149,7 @@ This is additive work in the new crate — it does not touch upstream-tracked fi
 
 - **Single session / in-memory state.** Like the desktop app, the server holds
   one active game in memory; it is a single-player local server, not multi-user.
-- **Interactive live matches** are not implemented yet. In web v1, `live` /
-  `spectator` modes auto-simulate the user's match (same as `instant`);
-  `delegate` is fully supported. Interactive matches are the next milestone.
-- **Blocking-action prompts** (`check_blocking_actions`) return none for now, so
-  the dashboard will not raise pre-advance warnings yet.
+- **`export_world_database`** writes under `<data_dir>/exports/` (a browser
+  cannot choose an arbitrary server path) and returns that path.
 - **Close-to-save** maps to the browser's native "leave site?" prompt; the
   desktop "save before quit" modal flow does not translate 1:1.

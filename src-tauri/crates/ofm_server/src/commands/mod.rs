@@ -13,13 +13,26 @@
 //! Commands not yet mirrored fall through to `AppError::NotImplemented`, which
 //! the frontend surfaces as a clear "not available in the web build" message.
 
+mod club;
+mod contracts;
 mod finances;
 mod game;
 mod jobs;
+mod live_match;
+mod live_match_service;
+mod messages;
 mod profiles;
 mod round_summary;
+mod season;
 mod settings;
+mod squad;
+mod staff;
+mod stats;
+mod team_talk;
 mod time;
+mod time_advancement;
+mod time_blockers;
+mod transfers;
 mod world;
 
 use serde::de::DeserializeOwned;
@@ -34,6 +47,9 @@ pub fn dispatch(app: &AppState, command: &str, args: Value) -> Result<Value, App
         // ----- world / databases -----
         "list_world_databases" => ok(world::list_world_databases(app)),
         "write_temp_database" => ok(world::write_temp_database(app, arg(&args, "json")?)),
+        "export_world_database" => {
+            ok(world::export_world_database(app, arg(&args, "exportPath")?))
+        }
 
         // ----- new game / saves lifecycle -----
         "start_new_game" => ok(game::start_new_game(
@@ -99,6 +115,216 @@ pub fn dispatch(app: &AppState, command: &str, args: Value) -> Result<Value, App
             arg(&args, "nationality")?,
         )),
         "delete_manager_profile" => ok(profiles::delete_manager_profile(app, arg(&args, "id")?)),
+
+        // ----- club / facilities -----
+        "upgrade_facility" => ok(club::upgrade_facility(app.state(), arg(&args, "facility")?)),
+
+        // ----- squad / tactics / training -----
+        "set_formation" => ok(squad::set_formation(app.state(), arg(&args, "formation")?)),
+        "set_starting_xi" => {
+            ok(squad::set_starting_xi(app.state(), arg(&args, "playerIds")?))
+        }
+        "set_play_style" => ok(squad::set_play_style(app.state(), arg(&args, "playStyle")?)),
+        "set_team_match_roles" => {
+            ok(squad::set_team_match_roles(app.state(), arg(&args, "matchRoles")?))
+        }
+        "set_training" => ok(squad::set_training(
+            app.state(),
+            arg(&args, "focus")?,
+            arg(&args, "intensity")?,
+        )),
+        "set_training_schedule" => {
+            ok(squad::set_training_schedule(app.state(), arg(&args, "schedule")?))
+        }
+        "set_training_groups" => {
+            ok(squad::set_training_groups(app.state(), arg(&args, "groups")?))
+        }
+        "set_player_training_focus" => ok(squad::set_player_training_focus(
+            app.state(),
+            arg(&args, "playerId")?,
+            arg_opt(&args, "focus")?,
+        )),
+        "set_player_squad_role" => ok(squad::set_player_squad_role(
+            app.state(),
+            arg(&args, "playerId")?,
+            arg(&args, "squadRole")?,
+        )),
+        "auto_select_set_pieces" => {
+            ok(squad::auto_select_set_pieces(app.state(), arg(&args, "playerIds")?))
+        }
+
+        // ----- staff -----
+        "hire_staff" => ok(staff::hire_staff(app.state(), arg(&args, "staffId")?)),
+        "release_staff" => ok(staff::release_staff(app.state(), arg(&args, "staffId")?)),
+
+        // ----- messages / inbox -----
+        "mark_message_read" => {
+            ok(messages::mark_message_read(app.state(), arg(&args, "messageId")?))
+        }
+        "delete_message" => ok(messages::delete_message(app.state(), arg(&args, "messageId")?)),
+        "delete_messages" => {
+            ok(messages::delete_messages(app.state(), arg(&args, "messageIds")?))
+        }
+        "mark_all_messages_read" => ok(messages::mark_all_messages_read(app.state())),
+        "clear_old_messages" => ok(messages::clear_old_messages(app.state())),
+        "resolve_message_action" => ok(messages::resolve_message_action(
+            app.state(),
+            arg(&args, "messageId")?,
+            arg(&args, "actionId")?,
+            arg_opt(&args, "optionId")?,
+        )),
+
+        // ----- contracts / renewals -----
+        "propose_renewal" => ok(contracts::propose_renewal(
+            app.state(),
+            arg(&args, "playerId")?,
+            arg(&args, "weeklyWage")?,
+            arg(&args, "contractYears")?,
+        )),
+        "delegate_renewals" => ok(contracts::delegate_renewals(
+            app.state(),
+            arg_opt(&args, "playerIds")?,
+            arg(&args, "maxWageIncreasePct")?,
+            arg(&args, "maxContractYears")?,
+        )),
+        "preview_renewal_financial_impact" => ok(contracts::preview_renewal_financial_impact(
+            app.state(),
+            arg(&args, "playerId")?,
+            arg(&args, "weeklyWage")?,
+        )),
+        "offer_free_agent_contract" => ok(contracts::offer_free_agent_contract(
+            app.state(),
+            arg(&args, "playerId")?,
+            arg(&args, "weeklyWage")?,
+            arg(&args, "contractYears")?,
+        )),
+        "preview_free_agent_contract_impact" => {
+            ok(contracts::preview_free_agent_contract_impact(
+                app.state(),
+                arg(&args, "playerId")?,
+                arg(&args, "weeklyWage")?,
+            ))
+        }
+        "set_contract_exit_intent" => ok(contracts::set_contract_exit_intent(
+            app.state(),
+            arg(&args, "playerId")?,
+            arg_opt(&args, "reason")?,
+        )),
+        "clear_contract_exit_intent" => {
+            ok(contracts::clear_contract_exit_intent(app.state(), arg(&args, "playerId")?))
+        }
+        "preview_contract_termination" => {
+            ok(contracts::preview_contract_termination(app.state(), arg(&args, "playerId")?))
+        }
+        "terminate_contract_now" => {
+            ok(contracts::terminate_contract_now(app.state(), arg(&args, "playerId")?))
+        }
+
+        // ----- transfers / scouting -----
+        "toggle_transfer_list" => {
+            ok(transfers::toggle_transfer_list(app.state(), arg(&args, "playerId")?))
+        }
+        "toggle_loan_list" => {
+            ok(transfers::toggle_loan_list(app.state(), arg(&args, "playerId")?))
+        }
+        "make_transfer_bid" => ok(transfers::make_transfer_bid(
+            app.state(),
+            arg(&args, "playerId")?,
+            arg(&args, "fee")?,
+        )),
+        "preview_transfer_bid_financial_impact" => {
+            ok(transfers::preview_transfer_bid_financial_impact(
+                app.state(),
+                arg(&args, "playerId")?,
+                arg(&args, "fee")?,
+            ))
+        }
+        "respond_to_offer" => ok(transfers::respond_to_offer(
+            app.state(),
+            arg(&args, "playerId")?,
+            arg(&args, "offerId")?,
+            arg(&args, "accept")?,
+        )),
+        "counter_offer" => ok(transfers::counter_offer(
+            app.state(),
+            arg(&args, "playerId")?,
+            arg(&args, "offerId")?,
+            arg(&args, "requestedFee")?,
+        )),
+        "send_scout" => ok(transfers::send_scout(
+            app.state(),
+            arg(&args, "scoutId")?,
+            arg(&args, "playerId")?,
+        )),
+        "start_youth_scouting" => ok(transfers::start_youth_scouting(
+            app.state(),
+            arg(&args, "scoutId")?,
+            arg_opt(&args, "region")?,
+            arg_opt(&args, "objective")?,
+            arg_opt(&args, "targetPosition")?,
+        )),
+        "cancel_youth_scouting" => {
+            ok(transfers::cancel_youth_scouting(app.state(), arg(&args, "assignmentId")?))
+        }
+        "reassign_youth_scouting" => ok(transfers::reassign_youth_scouting(
+            app.state(),
+            arg(&args, "assignmentId")?,
+            arg(&args, "scoutId")?,
+        )),
+
+        // ----- season rollover -----
+        "check_season_complete" => ok(season::check_season_complete(app.state())),
+        "advance_to_next_season" => ok(season::advance_to_next_season(app.state())),
+        "get_season_awards" => ok(season::get_season_awards(app.state())),
+
+        // ----- stats -----
+        "get_player_match_history" => ok(stats::get_player_match_history(
+            app.state(),
+            arg(&args, "playerId")?,
+            arg_opt(&args, "limit")?,
+        )),
+        "get_player_stats_overview" => {
+            ok(stats::get_player_stats_overview(app.state(), arg(&args, "playerId")?))
+        }
+        "get_team_stats_overview" => {
+            ok(stats::get_team_stats_overview(app.state(), arg(&args, "teamId")?))
+        }
+        "get_team_match_history" => ok(stats::get_team_match_history(
+            app.state(),
+            arg(&args, "teamId")?,
+            arg_opt(&args, "limit")?,
+        )),
+
+        // ----- live match -----
+        "start_live_match" => ok(live_match::start_live_match(
+            app.state(),
+            arg(&args, "fixtureIndex")?,
+            arg(&args, "mode")?,
+            arg(&args, "allowsExtraTime")?,
+        )),
+        "step_live_match" => {
+            ok(live_match::step_live_match(app.state(), arg(&args, "minutes")?))
+        }
+        "apply_match_command" => {
+            ok(live_match::apply_match_command(app.state(), arg(&args, "command")?))
+        }
+        "get_match_snapshot" => ok(live_match::get_match_snapshot(app.state())),
+        "finish_live_match" => ok(live_match::finish_live_match(app.state())),
+        "apply_team_talk" => ok(live_match::apply_team_talk(
+            app.state(),
+            arg(&args, "tone")?,
+            arg(&args, "context")?,
+        )),
+        "submit_press_conference" => ok(live_match::submit_press_conference(
+            app.state(),
+            arg(&args, "answers")?,
+            arg(&args, "homeTeam")?,
+            arg(&args, "awayTeam")?,
+            arg(&args, "homeScore")?,
+            arg(&args, "awayScore")?,
+            arg(&args, "userTeamName")?,
+            arg(&args, "userTeamId")?,
+        )),
 
         _ => Err(AppError::not_implemented(command)),
     }

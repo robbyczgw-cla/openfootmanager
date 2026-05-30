@@ -355,3 +355,118 @@ fn arg_opt<T: DeserializeOwned>(args: &Value, key: &str) -> Result<Option<T>, Ap
             .map_err(|_| AppError::backend(format!("be.error.web.invalidArgument:{key}"))),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::dispatch;
+    use crate::state::{AppError, AppState};
+    use serde_json::{json, Value};
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    /// A fresh, isolated `AppState` backed by a unique temp data dir.
+    fn temp_app() -> AppState {
+        let unique = format!(
+            "{}_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos(),
+            COUNTER.fetch_add(1, Ordering::Relaxed)
+        );
+        let dir = std::env::temp_dir().join(format!("ofm_server_test_{unique}"));
+        AppState::init(dir).expect("init app state")
+    }
+
+    fn call(app: &AppState, cmd: &str, args: Value) -> Result<Value, AppError> {
+        dispatch(app, cmd, args)
+    }
+
+    #[test]
+    fn unknown_command_returns_not_implemented() {
+        let app = temp_app();
+        match call(&app, "does_not_exist", json!({})) {
+            Err(AppError::NotImplemented(name)) => assert_eq!(name, "does_not_exist"),
+            _ => panic!("expected NotImplemented for unknown command"),
+        }
+        let _ = std::fs::remove_dir_all(app.data_dir());
+    }
+
+    #[test]
+    fn missing_required_argument_is_reported() {
+        let app = temp_app();
+        // start_new_game requires firstName/lastName/dob/nationality.
+        match call(&app, "start_new_game", json!({})) {
+            Err(AppError::Backend(msg)) => {
+                assert!(msg.contains("missingArgument"), "unexpected error: {msg}")
+            }
+            _ => panic!("expected a missingArgument backend error"),
+        }
+        let _ = std::fs::remove_dir_all(app.data_dir());
+    }
+
+    #[test]
+    fn full_new_game_flow_round_trips_through_dispatch() {
+        let app = temp_app();
+
+        // No active game yet.
+        assert!(call(&app, "get_active_game", json!({})).is_err());
+
+        // Create a game (random world) exactly as the frontend would.
+        let game = call(
+            &app,
+            "start_new_game",
+            json!({
+                "firstName": "Test", "lastName": "User", "dob": "1980-01-01",
+                "nationality": "England",
+                "startupOptions": {"startYear": 2026, "startPhase": "seasonStart"},
+                "worldSource": "random"
+            }),
+        )
+        .expect("start_new_game");
+        let team_id = game["teams"][0]["id"].as_str().unwrap().to_string();
+        assert!(!game["players"].as_array().unwrap().is_empty());
+
+        // Pick a team -> bootstraps the season and persists a save.
+        let after = call(&app, "select_team", json!({ "teamId": team_id }))
+            .expect("select_team");
+        assert_eq!(after["manager"]["team_id"].as_str(), Some(team_id.as_str()));
+
+        // Active game is now available.
+        call(&app, "get_active_game", json!({})).expect("get_active_game");
+
+        // Exactly one save exists.
+        let saves = call(&app, "get_saves", json!({})).expect("get_saves");
+        let save_id = saves[0]["id"].as_str().unwrap().to_string();
+
+        // A tactics command applies to the managed team.
+        let formed =
+            call(&app, "set_formation", json!({ "formation": "4-3-3" })).expect("set_formation");
+        assert!(formed["teams"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|t| t["id"] == Value::String(team_id.clone()) && t["formation"] == "4-3-3"));
+
+        // Advancing time moves the clock.
+        let day0 = after["clock"]["current_date"].as_str().unwrap().to_string();
+        let advanced = call(&app, "advance_time", json!({})).expect("advance_time");
+        assert_ne!(advanced["clock"]["current_date"].as_str().unwrap(), day0);
+
+        // Save then load round-trips through SQLite.
+        call(&app, "save_game", json!({})).expect("save_game");
+        let mgr_name = call(&app, "load_game", json!({ "saveId": save_id })).expect("load_game");
+        assert!(mgr_name.as_str().unwrap().contains("Test"));
+
+        // Settings + finances respond with the expected shapes.
+        let settings = call(&app, "get_settings", json!({})).expect("get_settings");
+        assert!(settings["settings"]["currency"].is_string());
+        call(&app, "get_finance_snapshot", json!({})).expect("get_finance_snapshot");
+
+        // An unimplemented arg name would surface as a backend error, not a panic.
+        assert!(call(&app, "advance_time_with_mode", json!({ "mode": "delegate" })).is_ok());
+
+        let _ = std::fs::remove_dir_all(app.data_dir());
+    }
+}

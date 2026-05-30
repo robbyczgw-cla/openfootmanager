@@ -56,6 +56,7 @@ impl AppState {
 }
 
 /// Error returned from a command handler.
+#[derive(Debug)]
 pub enum AppError {
     /// A backend/domain error keyed for i18n (e.g. `be.error.noActiveGameSession`).
     Backend(String),

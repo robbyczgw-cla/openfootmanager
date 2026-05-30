@@ -133,6 +133,36 @@ Any future command added upstream that has not yet been mirrored returns HTTP
 `501` with `{"error":"be.error.web.commandNotImplemented","command":"<name>"}`,
 which the UI surfaces as a clear message rather than crashing.
 
+## Testing
+
+Two layers, both runnable locally and in CI:
+
+**1. Server dispatch tests (no browser, runs in `cargo test`)**
+
+```bash
+cargo test --manifest-path src-tauri/Cargo.toml -p ofm_server
+```
+
+These boot an isolated `AppState` and drive the dispatch table directly — new
+game → team selection → save/load round-trip through SQLite, a tactics command,
+time advancement — plus the unknown-command and missing-argument error paths.
+They are part of the workspace, so the existing `cargo test --workspace` CI job
+already covers them.
+
+**2. End-to-end HTTP smoke test (every command, real server)**
+
+```bash
+npm run build:web && npm run server:web   # terminal 1
+npm run test:web:smoke                     # terminal 2 (OFM_WEB_URL optional)
+```
+
+`scripts/smoke-web.mjs` calls **every** command over HTTP using the exact
+argument names the React frontend sends, and exits non-zero on any *contract*
+failure (missing/invalid argument, unimplemented command, or 500). Legitimate
+domain errors from invalid probes (e.g. bidding on a non-existent player) are
+expected and ignored. This is the quickest way to confirm the web layer still
+matches the frontend after a command is added or an upstream sync.
+
 ## Adding a command (when syncing upstream)
 
 When upstream adds or changes a `#[tauri::command]`:

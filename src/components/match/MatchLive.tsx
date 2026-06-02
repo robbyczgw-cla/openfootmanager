@@ -142,6 +142,13 @@ export default function MatchLive({
     let raf = 0;
     let lastTs: number | null = null;
     let acc = 0;
+    let lastFetchTs = -Infinity;
+    // Wall-clock budget per fast-forwarded (non-highlight) minute. Without this
+    // the queue is empty between highlights, so the refill below would fire on
+    // every rAF tick and blast through all 90 minutes in ~1s. Pacing it makes
+    // the clock visibly spin; highlight minutes (which DO queue frames) are
+    // unaffected and still play at full `frameDur`.
+    const ffMinuteMs = speed === "instant" ? 0 : Math.max(30, SPEED_MS[speed] / 10);
     const loop = (ts: number) => {
       if (lastTs === null) lastTs = ts;
       acc += ts - lastTs;
@@ -161,8 +168,14 @@ export default function MatchLive({
         if (acc > frameDur * FRAMES_PER_MINUTE) acc = 0;
       }
       // Refill only when nearly drained, so the snapshot (header/score) stays
-      // in step with the frames on the pitch instead of racing ahead.
-      if (framesRef.current.length < 8 && !fetchingRef.current) {
+      // in step with the frames on the pitch instead of racing ahead. When the
+      // previous minute was fast-forwarded (no frames queued), throttle the
+      // refetch to `ffMinuteMs` so the clock spins at a watchable rate instead
+      // of finishing the match in a blink.
+      const queueLow = framesRef.current.length < 8;
+      const ffReady = !ffRef.current || ts - lastFetchTs >= ffMinuteMs;
+      if (queueLow && ffReady && !fetchingRef.current) {
+        lastFetchTs = ts;
         void fetchNextMinute();
       }
       raf = requestAnimationFrame(loop);

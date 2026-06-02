@@ -313,10 +313,12 @@ impl Pitch {
                     (gx, 0.5 + (ball.1 - 0.5) * 0.35)
                 } else if is_carrier {
                     let fwd = if side == Side::Home { 0.09 } else { -0.09 };
-                    ((pos.0 + fwd).clamp(0.03, 0.97), lerp(pos.1, 0.5, 0.08))
+                    ((pos.0 + fwd).clamp(0.03, 0.97), lerp(pos.1, 0.5, 0.05))
                 } else {
-                    // When our team has the ball, midfielders/forwards push up to
-                    // support the attack so passes can reach the final third.
+                    // Off-ball positioning. The KEY to not looking like a single
+                    // blob: each player anchors to their formation slot and only
+                    // PARTIALLY reacts to the ball, weighted by role and (for the
+                    // lateral pull) by how close they already are to the action.
                     let attacking = poss == side;
                     let dir = if side == Side::Home { 1.0 } else { -1.0 };
                     let style = if side == Side::Home {
@@ -332,21 +334,40 @@ impl Pitch {
                     let push = if attacking {
                         style_push
                             * match role {
-                                Position::Forward => 0.26,
-                                Position::Midfielder => 0.13,
+                                Position::Forward => 0.20,
+                                Position::Midfielder => 0.10,
                                 _ => 0.0,
                             }
                     } else {
                         0.0
                     };
-                    let mut tx = (home.0 + (ball.0 - 0.5) * 0.32 + dir * push).clamp(0.03, 0.97);
-                    let mut ty = lerp(home.1, ball.1, 0.22);
+                    // Team block slides up/down the pitch with the ball, but
+                    // ROLE-WEIGHTED so the shape stretches and compresses instead
+                    // of translating rigidly (defenders hold the line, forwards
+                    // ride higher). Much smaller than the old uniform 0.32.
+                    let line_w = match role {
+                        Position::Defender => 0.10,
+                        Position::Midfielder => 0.16,
+                        Position::Forward => 0.22,
+                        _ => 0.0,
+                    };
+                    let block_shift = (ball.0 - 0.5) * line_w;
+                    // Lateral: hold formation width. Only players near the ball
+                    // drift toward it (local support / shading across); distant
+                    // players keep their slot — this is what stops the whole team
+                    // swinging sideways together.
+                    let to_ball = dist(pos, ball);
+                    let react = (1.0 - to_ball / 0.40).clamp(0.0, 1.0);
+                    let lateral_pull = 0.05 + 0.32 * react;
+
+                    let mut tx = (home.0 + block_shift + dir * push).clamp(0.03, 0.97);
+                    let mut ty = lerp(home.1, ball.1, lateral_pull);
                     // Off-ball run: forwards crash the box when the ball is advanced.
                     if attacking && role == Position::Forward {
                         let adv = if side == Side::Home { ball.0 } else { 1.0 - ball.0 };
-                        if adv > 0.60 {
-                            tx = if side == Side::Home { 0.84 } else { 0.16 };
-                            ty = lerp(home.1, 0.5, 0.45);
+                        if adv > 0.62 {
+                            tx = if side == Side::Home { 0.82 } else { 0.18 };
+                            ty = lerp(home.1, 0.5, 0.40);
                         }
                     }
                     (tx, ty)
@@ -760,12 +781,19 @@ impl Pitch {
     }
 }
 
+/// Players within this distance of their target hold position — a dead zone
+/// that stops the constant micro-twitching that reads as nervous "swaying".
+const SETTLE: f64 = 0.006;
+
 fn step_toward(pos: &mut (f64, f64), target: (f64, f64), step: f64) {
     let dx = target.0 - pos.0;
     let dy = target.1 - pos.1;
     let d = (dx * dx + dy * dy).sqrt();
-    if d > 1e-9 {
-        let f = (step / d).min(1.0);
+    if d > SETTLE {
+        // Ease in over the last stretch so arrivals decelerate instead of
+        // snapping, then settle once inside the dead zone.
+        let eff = step.min(d - SETTLE);
+        let f = eff / d;
         pos.0 += dx * f;
         pos.1 += dy * f;
     }

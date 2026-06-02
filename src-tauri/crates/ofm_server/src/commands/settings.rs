@@ -30,6 +30,9 @@ pub struct AppSettings {
     pub ui_scale: String,
     #[serde(default)]
     pub high_contrast: bool,
+    /// Match view renderer: "2d" or "3d".
+    #[serde(default = "default_match_view")]
+    pub match_view: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -45,6 +48,9 @@ fn default_language() -> String {
 fn default_ui_scale() -> String {
     "normal".to_string()
 }
+fn default_match_view() -> String {
+    "2d".to_string()
+}
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -59,6 +65,7 @@ impl Default for AppSettings {
             confirm_advance: false,
             ui_scale: "normal".to_string(),
             high_contrast: false,
+            match_view: "2d".to_string(),
         }
     }
 }

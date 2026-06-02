@@ -9,6 +9,9 @@ import { useSettingsStore } from "../../store/settingsStore";
 import { EventFeed, MatchStats, Lineups } from "./MatchPanels";
 import MatchScreenLayout from "./MatchScreenLayout";
 import { SubPanel } from "./SubPanel";
+import MatchPitch2D from "./MatchPitch2D";
+import MatchPitch3D from "./MatchPitch3D";
+import { buildFormationFrame, type MatchFrame } from "./matchFrame";
 import {
   Play, Pause, FastForward, SkipForward,
   Clock, Users, BarChart3, MessageSquare, RefreshCw,
@@ -17,6 +20,8 @@ import {
 } from "lucide-react";
 
 type ActivePanel = "events" | "stats" | "lineups";
+
+const FRAMES_PER_MINUTE = 30; // engine ticks per simulated minute (positional.rs)
 
 interface MatchLiveProps {
   snapshot: MatchSnapshot;
@@ -42,87 +47,129 @@ export default function MatchLive({
   const [activePanel, setActivePanel] = useState<ActivePanel>("events");
   const [isRunning, setIsRunning] = useState(true);
   const [showSubPanel, setShowSubPanel] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const eventFeedRef = useRef<HTMLDivElement>(null);
   // Track phases we've already signaled to avoid double-firing
   const signaledRef = useRef<Set<string>>(new Set());
+
+  // 2D frame playback (Stage 1): the engine streams ~30 positional frames per
+  // simulated minute; play them out smoothly with requestAnimationFrame.
+  const [liveFrame, setLiveFrame] = useState<MatchFrame | null>(null);
+  const framesRef = useRef<MatchFrame[]>([]);
+  const fetchingRef = useRef(false);
+
+  // Highlights (FM-style): in "highlights" mode only minutes containing an
+  // important event are played on the pitch; the rest are fast-forwarded.
+  const [viewMode, setViewMode] = useState<"highlights" | "full">("highlights");
+  const viewModeRef = useRef(viewMode);
+  const [fastForwarding, setFastForwarding] = useState(false);
+  const ffRef = useRef(false);
 
   const homeTeamColor = gameState.teams.find(t => t.id === snapshot.home_team.id)?.colors?.primary || "#10b981";
   const awayTeamColor = gameState.teams.find(t => t.id === snapshot.away_team.id)?.colors?.primary || "#6366f1";
 
   const isFinished = snapshot.phase === "Finished";
 
-  // Step the match forward one minute
-  const stepMatch = useCallback(async () => {
+  // Fetch the next simulated minute: queue its positional frames, surface
+  // important events, refresh the snapshot, and handle phase-end pauses.
+  const fetchNextMinute = useCallback(async (): Promise<MatchFrame[]> => {
+    if (fetchingRef.current) return [];
+    fetchingRef.current = true;
     try {
       const results = await invoke<MinuteResult[]>("step_live_match", { minutes: 1 });
-      if (results.length > 0) {
-        const lastResult = results[results.length - 1];
-
-        // Collect important events
-        for (const r of results) {
-          for (const evt of r.events) {
-            const display = getEventDisplay(evt);
-            if (display.important) {
-              onImportantEvent(evt);
-            }
-          }
+      const frames: MatchFrame[] = [];
+      for (const r of results) {
+        for (const evt of r.events) {
+          if (getEventDisplay(evt).important) onImportantEvent(evt);
         }
+        if (r.frames) frames.push(...r.frames);
+      }
+      // In highlights mode, only queue frames for minutes that contain an
+      // important event; other minutes are fast-forwarded (no slow playback).
+      const isHighlight = results.some((r) =>
+        r.events.some((e) => getEventDisplay(e).important),
+      );
+      const play = viewModeRef.current === "full" || isHighlight;
+      if (play) framesRef.current.push(...frames);
+      if (ffRef.current !== !play) {
+        ffRef.current = !play;
+        setFastForwarding(!play);
+      }
 
-        // Fetch full snapshot
-        const snap = await invoke<MatchSnapshot>("get_match_snapshot");
-        onSnapshotUpdate(snap);
+      const snap = await invoke<MatchSnapshot>("get_match_snapshot");
+      onSnapshotUpdate(snap);
 
-        // Check for phase transitions that should pause
+      const lastResult = results[results.length - 1];
+      if (lastResult) {
         const phase = lastResult.phase;
         if (phase === "HalfTime" && !signaledRef.current.has("HalfTime")) {
           signaledRef.current.add("HalfTime");
           setIsRunning(false);
           setSpeed("paused");
-          // Small delay so the last event renders before transitioning
           setTimeout(() => onHalfTime(), 600);
-          return;
-        }
-
-        if (phase === "ExtraTimeHalfTime" && !signaledRef.current.has("ExtraTimeHalfTime")) {
+        } else if (phase === "ExtraTimeHalfTime" && !signaledRef.current.has("ExtraTimeHalfTime")) {
           signaledRef.current.add("ExtraTimeHalfTime");
           setIsRunning(false);
           setSpeed("paused");
           setTimeout(() => onHalfTime(), 600);
-          return;
-        }
-
-        if (lastResult.is_finished && !signaledRef.current.has("Finished")) {
+        } else if (lastResult.is_finished && !signaledRef.current.has("Finished")) {
           signaledRef.current.add("Finished");
           setIsRunning(false);
           setSpeed("paused");
           setTimeout(() => onFullTime(), 600);
-          return;
         }
       }
+      return frames;
     } catch (err) {
       console.error("Failed to step match:", err);
       setIsRunning(false);
+      return [];
+    } finally {
+      fetchingRef.current = false;
     }
   }, [onSnapshotUpdate, onImportantEvent, onHalfTime, onFullTime]);
 
-  // Auto-step timer
+  // Manual single-minute step (when paused): advance and jump to the end frame.
+  const handleManualStep = useCallback(async () => {
+    const frames = await fetchNextMinute();
+    framesRef.current = [];
+    if (frames.length) setLiveFrame(frames[frames.length - 1]);
+  }, [fetchNextMinute]);
+
+  // requestAnimationFrame playback: drain the queued frames at a rate derived
+  // from the sim speed, refilling from the engine when the queue runs low.
   useEffect(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    }
-
-    if (isRunning && speed !== "paused" && !isFinished && !showSubPanel) {
-      timerRef.current = setTimeout(async () => {
-        await stepMatch();
-      }, SPEED_MS[speed]);
-    }
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+    if (!isRunning || speed === "paused" || isFinished || showSubPanel) return;
+    let raf = 0;
+    let lastTs: number | null = null;
+    let acc = 0;
+    const loop = (ts: number) => {
+      if (lastTs === null) lastTs = ts;
+      acc += ts - lastTs;
+      lastTs = ts;
+      if (speed === "instant") {
+        if (framesRef.current.length > 0) {
+          setLiveFrame(framesRef.current[framesRef.current.length - 1]);
+          framesRef.current = [];
+        }
+      } else {
+        const frameDur = Math.max(8, SPEED_MS[speed] / FRAMES_PER_MINUTE);
+        while (acc >= frameDur && framesRef.current.length > 0) {
+          setLiveFrame(framesRef.current.shift()!);
+          acc -= frameDur;
+        }
+        // Avoid runaway catch-up after a stall / tab backgrounding.
+        if (acc > frameDur * FRAMES_PER_MINUTE) acc = 0;
+      }
+      // Refill only when nearly drained, so the snapshot (header/score) stays
+      // in step with the frames on the pitch instead of racing ahead.
+      if (framesRef.current.length < 8 && !fetchingRef.current) {
+        void fetchNextMinute();
+      }
+      raf = requestAnimationFrame(loop);
     };
-  }, [isRunning, speed, snapshot.current_minute, snapshot.phase, stepMatch, isFinished, showSubPanel]);
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [isRunning, speed, isFinished, showSubPanel, fetchNextMinute]);
 
   // Auto-scroll event feed
   useEffect(() => {
@@ -130,6 +177,19 @@ export default function MatchLive({
       eventFeedRef.current.scrollTop = eventFeedRef.current.scrollHeight;
     }
   }, [importantEvents.length]);
+
+  // Keep the view-mode ref current for the playback loop.
+  useEffect(() => {
+    viewModeRef.current = viewMode;
+  }, [viewMode]);
+
+  // Clear the fast-forward indicator whenever playback stops.
+  useEffect(() => {
+    if (!isRunning) {
+      ffRef.current = false;
+      setFastForwarding(false);
+    }
+  }, [isRunning]);
 
   // Apply substitution
   const handleSubstitution = async (playerOffId: string, playerOnId: string) => {
@@ -188,6 +248,11 @@ export default function MatchLive({
               <span className="text-xs font-heading uppercase tracking-widest text-gray-500 dark:text-gray-400">
                 {isRunning ? t('match.live') : t('match.paused')}
               </span>
+              {fastForwarding && (
+                <span className="flex items-center gap-1 text-[10px] font-heading uppercase tracking-wider text-amber-500">
+                  <FastForward className="w-3 h-3" /> {t('match.skipping', 'Skipping')}
+                </span>
+              )}
             </div>
 
             {/* Scoreboard */}
@@ -261,8 +326,28 @@ export default function MatchLive({
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Panel: Event Feed + Stats */}
-        <div className="flex-1 flex flex-col">
+        {/* Left Panel: 2D pitch (primary view) + event/stat tabs below */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* 2D Match Pitch — primary match view (3D later, same frames) */}
+          <div className="border-b border-gray-200 dark:border-navy-700 bg-gray-50 dark:bg-navy-900/40 p-2 sm:p-3">
+            {settings.match_view === "3d" ? (
+              <MatchPitch3D
+                frame={liveFrame ?? buildFormationFrame(snapshot)}
+                homeColor={homeTeamColor}
+                awayColor={awayTeamColor}
+                homeName={snapshot.home_team.name}
+                awayName={snapshot.away_team.name}
+              />
+            ) : (
+              <MatchPitch2D
+                frame={liveFrame ?? buildFormationFrame(snapshot)}
+                homeColor={homeTeamColor}
+                awayColor={awayTeamColor}
+                homeName={snapshot.home_team.name}
+                awayName={snapshot.away_team.name}
+              />
+            )}
+          </div>
           <div className="flex bg-white dark:bg-navy-800 border-b border-gray-200 dark:border-navy-700 transition-colors duration-300">
             {([
               { id: "events" as ActivePanel, label: t('match.events'), icon: <MessageSquare className="w-4 h-4" /> },
@@ -292,6 +377,25 @@ export default function MatchLive({
 
         {/* Right Panel: Controls */}
         <aside className="w-72 bg-white dark:bg-navy-800 border-l border-gray-200 dark:border-navy-700 flex flex-col transition-colors duration-300">
+          {/* View mode: highlights vs full match (FM-style) */}
+          <div className="p-4 border-b border-gray-200 dark:border-navy-700">
+            <h3 className="text-xs font-heading font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">{t('match.view', 'View')}</h3>
+            <div className="flex gap-1">
+              {([
+                { id: "highlights" as const, label: t('match.highlights', 'Highlights') },
+                { id: "full" as const, label: t('match.fullMatch', 'Full Match') },
+              ]).map(v => (
+                <button
+                  key={v.id}
+                  onClick={() => setViewMode(v.id)}
+                  className={`flex-1 py-2 rounded-lg text-xs font-heading uppercase tracking-wider transition-all ${viewMode === v.id ? "bg-primary-500/20 text-primary-500 dark:text-primary-400 ring-1 ring-primary-500/50" : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-navy-700"}`}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Speed Controls */}
           <div className="p-4 border-b border-gray-200 dark:border-navy-700">
             <h3 className="text-xs font-heading font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">{t('match.simSpeed')}</h3>
@@ -316,7 +420,7 @@ export default function MatchLive({
             </div>
             {speed === "paused" && (
               <button
-                onClick={stepMatch}
+                onClick={handleManualStep}
                 className="w-full mt-2 flex items-center justify-center gap-2 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-navy-700 dark:hover:bg-navy-600 rounded-lg text-sm font-heading uppercase tracking-wider text-gray-700 dark:text-gray-300 transition-colors"
               >
                 <ChevronRight className="w-4 h-4" />

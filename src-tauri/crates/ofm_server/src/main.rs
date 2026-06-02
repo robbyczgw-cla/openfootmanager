@@ -149,7 +149,13 @@ async fn serve_static_or_spa(State(state): State<StaticState>, uri: Uri) -> Resp
         }
     }
 
-    Html((*state.index).clone()).into_response()
+    // Read index.html fresh so a frontend rebuild (which changes asset hashes)
+    // is picked up without restarting the server — the startup copy is only a
+    // fallback if the file can't be read.
+    match tokio::fs::read_to_string(state.dist.join("index.html")).await {
+        Ok(html) => Html(html).into_response(),
+        Err(_) => Html((*state.index).clone()).into_response(),
+    }
 }
 
 fn mime_for(path: &std::path::Path) -> &'static str {

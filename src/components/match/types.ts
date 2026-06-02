@@ -1,6 +1,7 @@
 // Shared types for match simulation components — mirrors Rust engine types
 
 import type { TFunction } from "i18next";
+import type { MatchFrame } from "./matchFrame";
 
 export interface MatchEvent {
   minute: number;
@@ -96,6 +97,8 @@ export interface MinuteResult {
   possession: "Home" | "Away";
   ball_zone: string;
   is_finished: boolean;
+  /** Per-tick positional frames for this minute (2D/3D renderer playback). */
+  frames?: MatchFrame[];
 }
 
 export interface RoundResultSummary {

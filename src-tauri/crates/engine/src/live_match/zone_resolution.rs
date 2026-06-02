@@ -1,3 +1,7 @@
+// Legacy zone-based resolution — superseded by the positional engine in
+// `positional.rs` (Stage 1). Kept for reference; not on the live-match path.
+#![allow(dead_code)]
+
 use rand::{Rng, RngExt};
 
 use crate::event::{EventType, MatchEvent};
@@ -339,7 +343,7 @@ impl LiveMatchState {
         events
     }
 
-    fn maybe_card<R: Rng>(
+    pub(super) fn maybe_card<R: Rng>(
         &mut self,
         minute: u8,
         side: Side,

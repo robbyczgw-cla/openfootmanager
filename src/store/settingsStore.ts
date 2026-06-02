@@ -12,6 +12,7 @@ export interface AppSettings {
   confirm_advance: boolean;
   ui_scale: "small" | "normal" | "large" | "xlarge";
   high_contrast: boolean;
+  match_view: "2d" | "3d";
 }
 
 export interface CurrencyDefinition {
@@ -37,6 +38,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   confirm_advance: false,
   ui_scale: "normal",
   high_contrast: false,
+  match_view: "2d",
 };
 
 const DEFAULT_CURRENCY: CurrencyDefinition = {

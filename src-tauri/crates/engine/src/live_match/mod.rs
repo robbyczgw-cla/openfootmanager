@@ -1,5 +1,6 @@
 mod helpers;
 mod penalty;
+mod positional;
 mod simulation;
 mod snapshot;
 mod substitution;
@@ -12,6 +13,9 @@ use std::collections::{HashMap, HashSet};
 use crate::event::MatchEvent;
 use crate::report::MatchReport;
 use crate::types::{MatchConfig, PlayStyle, PlayerData, Side, TeamData, Zone};
+
+pub use positional::MatchFrame;
+use positional::Pitch;
 
 // ---------------------------------------------------------------------------
 // MatchPhase — tracks where we are in the match lifecycle
@@ -112,6 +116,8 @@ pub struct MinuteResult {
     pub possession: Side,
     pub ball_zone: Zone,
     pub is_finished: bool,
+    /// Per-tick positional frames for this minute (2D/3D renderer input).
+    pub frames: Vec<MatchFrame>,
 }
 
 // ---------------------------------------------------------------------------
@@ -221,6 +227,9 @@ pub struct LiveMatchState {
 
     // Penalty shootout state
     penalty_state: PenaltyShootoutState,
+
+    // Stage 1 positional simulation (drives movement, outcomes and frames)
+    pitch: Pitch,
 }
 
 impl LiveMatchState {
@@ -239,6 +248,8 @@ impl LiveMatchState {
         for p in home.players.iter().chain(away.players.iter()) {
             player_conditions.insert(p.id.clone(), p.condition as f64);
         }
+
+        let pitch = Pitch::new(&home, &away, config.clone());
 
         Self {
             home,
@@ -270,6 +281,7 @@ impl LiveMatchState {
             et_second_half_stoppage: 0,
             player_conditions,
             penalty_state: PenaltyShootoutState::default(),
+            pitch,
         }
     }
 
@@ -297,13 +309,27 @@ impl LiveMatchState {
                 side,
                 player_off_id,
                 player_on_id,
-            } => self.do_substitution(side, &player_off_id, &player_on_id),
+            } => {
+                self.do_substitution(side, &player_off_id, &player_on_id)?;
+                if let Some(on) = self
+                    .team_ref(side)
+                    .players
+                    .iter()
+                    .find(|p| p.id == player_on_id)
+                    .cloned()
+                {
+                    self.pitch.substitute(&player_off_id, &on);
+                }
+                Ok(())
+            }
             MatchCommand::ChangeFormation { side, formation } => {
                 self.apply_formation(side, &formation);
+                self.pitch.apply_formation(side, &formation);
                 Ok(())
             }
             MatchCommand::ChangePlayStyle { side, play_style } => {
                 self.team_mut(side).play_style = play_style;
+                self.pitch.set_play_style(side, play_style);
                 Ok(())
             }
             MatchCommand::SetFreeKickTaker { side, player_id } => {

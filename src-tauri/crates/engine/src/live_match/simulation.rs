@@ -11,6 +11,9 @@ use super::{LiveMatchState, MatchPhase, MinuteResult};
 
 impl LiveMatchState {
     pub(super) fn start_match<R: Rng>(&mut self, rng: &mut R) -> MinuteResult {
+        // Rebuild the pitch from the final kickoff lineup (reflects any pre-match
+        // swaps / formation choices made before kickoff).
+        self.pitch = super::positional::Pitch::new(&self.home, &self.away, self.config.clone());
         self.phase = MatchPhase::FirstHalf;
         self.current_minute = 0;
         self.ball_zone = Zone::Midfield;
@@ -29,6 +32,7 @@ impl LiveMatchState {
             possession: Side::Home,
             ball_zone: Zone::Midfield,
             is_finished: false,
+            frames: vec![self.pitch.frame()],
         }
     }
 
@@ -39,6 +43,7 @@ impl LiveMatchState {
         self.current_minute = start_min;
         self.ball_zone = Zone::Midfield;
         self.possession = Side::Away;
+        self.pitch.reset_kickoff(Side::Away);
         self.second_half_stoppage = rng.random_range(0..=self.config.stoppage_time_max);
 
         let evt = MatchEvent::new(
@@ -58,6 +63,7 @@ impl LiveMatchState {
             possession: Side::Away,
             ball_zone: Zone::Midfield,
             is_finished: false,
+            frames: vec![self.pitch.frame()],
         }
     }
 
@@ -67,6 +73,7 @@ impl LiveMatchState {
         self.current_minute = start_min;
         self.ball_zone = Zone::Midfield;
         self.possession = Side::Home;
+        self.pitch.reset_kickoff(Side::Home);
         self.et_second_half_stoppage = rng.random_range(0..=2); // short stoppage in ET
 
         let evt = MatchEvent::new(
@@ -86,6 +93,7 @@ impl LiveMatchState {
             possession: Side::Home,
             ball_zone: Zone::Midfield,
             is_finished: false,
+            frames: vec![self.pitch.frame()],
         }
     }
 
@@ -97,6 +105,7 @@ impl LiveMatchState {
             self.ball_zone = Zone::Midfield;
             self.possession = Side::Home;
             self.et_first_half_stoppage = rng.random_range(0..=2);
+            self.pitch.reset_kickoff(Side::Home);
 
             let evt = MatchEvent::new(91, EventType::KickOff, Side::Home, Zone::Midfield);
             self.events.push(evt.clone());
@@ -110,6 +119,7 @@ impl LiveMatchState {
                 possession: Side::Home,
                 ball_zone: Zone::Midfield,
                 is_finished: false,
+                frames: vec![self.pitch.frame()],
             }
         } else {
             // Match decided in normal time
@@ -141,6 +151,7 @@ impl LiveMatchState {
                 possession: self.possession,
                 ball_zone: Zone::Midfield,
                 is_finished: false,
+                frames: vec![self.pitch.frame()],
             }
         } else {
             self.phase = MatchPhase::Finished;
@@ -156,33 +167,65 @@ impl LiveMatchState {
         self.current_minute += 1;
         let minute = self.current_minute;
 
-        // Track possession
-        match self.possession {
-            Side::Home => self.home_possession_ticks += 1,
-            Side::Away => self.away_possession_ticks += 1,
-        }
-
         // Deplete stamina for all on-pitch players
         self.deplete_stamina_tick();
 
-        // Simulate 1-3 actions per minute
+        // Run the positional engine for this minute: each tick advances movement
+        // and may resolve an action (pass/shot/tackle) into events. The frames
+        // are the per-tick positions the 2D/3D renderer plays back.
         let mut minute_events = Vec::new();
-        let actions = rng.random_range(1..=3u8);
-        for _ in 0..actions {
-            let new_events = self.resolve_action(minute, rng);
-            minute_events.extend(new_events);
+        let mut frames = Vec::with_capacity(super::positional::TICKS_PER_MINUTE as usize);
+        for _ in 0..super::positional::TICKS_PER_MINUTE {
+            let tick_events = self.pitch.tick(minute, rng);
+            for evt in &tick_events {
+                if evt.is_goal() {
+                    self.add_goal(evt.side);
+                }
+                self.events.push(evt.clone());
+            }
+            minute_events.extend(tick_events);
+            frames.push(self.pitch.frame());
         }
 
-        // Possession contest
-        let poss_side = self.possession;
-        let def_side = poss_side.opposite();
-        let mid_att = self.effective_midfield(poss_side);
-        let mid_def = self.effective_midfield(def_side);
-        let retain = mid_att / (mid_att + mid_def);
-        if rng.random_range(0.0..1.0f64) > retain {
-            self.possession = def_side;
-            self.ball_zone = Zone::Midfield;
+        // Discipline: turn positional fouls into cards / penalties, reusing the
+        // existing rules. Collect descriptors first to avoid borrow conflicts.
+        let fouls: Vec<(Side, Option<String>, Zone)> = minute_events
+            .iter()
+            .filter(|e| e.event_type == EventType::Foul)
+            .map(|e| (e.side, e.player_id.clone(), e.zone))
+            .collect();
+        for (fouling_side, fouler_id, zone) in fouls {
+            let att_side = fouling_side.opposite();
+            if zone.is_box_for(att_side)
+                && rng.random_range(0.0..1.0f64) < self.config.penalty_probability
+            {
+                let awarded = MatchEvent::new(minute, EventType::PenaltyAwarded, att_side, zone);
+                self.events.push(awarded.clone());
+                minute_events.push(awarded);
+                let pen = self.resolve_in_match_penalty(minute, att_side, rng);
+                let scored = pen.iter().any(|e| e.event_type == EventType::PenaltyGoal);
+                minute_events.extend(pen);
+                self.pitch
+                    .reset_kickoff(if scored { att_side.opposite() } else { att_side });
+            }
+            if let Some(fid) = fouler_id {
+                let cards = self.maybe_card(minute, fouling_side, &fid, zone, rng);
+                for c in &cards {
+                    if matches!(c.event_type, EventType::RedCard | EventType::SecondYellow) {
+                        self.pitch.send_off(&fid);
+                    }
+                }
+                minute_events.extend(cards);
+            }
         }
+
+        // Possession % + sync the coarse snapshot fields from the pitch.
+        match self.pitch.possession {
+            Side::Home => self.home_possession_ticks += 1,
+            Side::Away => self.away_possession_ticks += 1,
+        }
+        self.possession = self.pitch.possession;
+        self.ball_zone = self.pitch.ball_zone();
 
         // Check for phase transitions
         let transition_events = self.check_phase_end(minute, rng);
@@ -197,6 +240,7 @@ impl LiveMatchState {
             possession: self.possession,
             ball_zone: self.ball_zone,
             is_finished: self.phase == MatchPhase::Finished,
+            frames,
         }
     }
 
@@ -254,6 +298,7 @@ impl LiveMatchState {
             possession: self.possession,
             ball_zone: self.ball_zone,
             is_finished: true,
+            frames: vec![self.pitch.frame()],
         }
     }
 }

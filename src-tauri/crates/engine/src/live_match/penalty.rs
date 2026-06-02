@@ -86,6 +86,7 @@ impl LiveMatchState {
             possession: kicking_side,
             ball_zone: Zone::Midfield,
             is_finished: self.phase == super::MatchPhase::Finished,
+            frames: vec![self.pitch.frame()],
         }
     }
 

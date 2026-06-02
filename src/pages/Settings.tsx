@@ -310,6 +310,25 @@ export default function Settings() {
           </SettingRow>
 
           <SettingRow
+            label={t("settings.matchView", "Match View")}
+            description={t(
+              "settings.matchViewDesc",
+              "Render live matches in 2D or 3D (same engine, same result).",
+            )}
+          >
+            <SegmentedControl
+              options={[
+                { value: "2d", label: "2D" },
+                { value: "3d", label: "3D" },
+              ]}
+              value={settings.match_view}
+              onChange={(v) =>
+                handleUpdate({ match_view: v as AppSettings["match_view"] })
+              }
+            />
+          </SettingRow>
+
+          <SettingRow
             label={t("settings.matchCommentary")}
             description={t("settings.matchCommentaryDesc")}
           >

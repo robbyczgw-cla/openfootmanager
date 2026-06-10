@@ -1740,6 +1740,170 @@
       "FreeKick": "Coup franc",
       "Foul": "Faute",
       "PenaltyAwarded": "Penalty accordé"
+    },
+    "commentary": {
+      "kickOff": {
+        "0": "C'est parti ! {{homeTeam}} donne le coup d'envoi face à {{awayTeam}}.",
+        "1": "L'arbitre siffle et le match est lancé !"
+      },
+      "halfTime": {
+        "0": "C'est la mi-temps. {{homeTeam}} {{homeScore}}-{{awayScore}} {{awayTeam}} à la pause.",
+        "1": "Fin d'une première période animée : {{homeScore}}-{{awayScore}} alors que les joueurs rejoignent les vestiaires."
+      },
+      "secondHalfStart": {
+        "0": "La seconde période est lancée !",
+        "1": "Les joueurs sont de retour et la seconde période commence !"
+      },
+      "fullTime": {
+        "0": "Coup de sifflet final ! Score final : {{homeTeam}} {{homeScore}}-{{awayScore}} {{awayTeam}}.",
+        "1": "C'est terminé. {{homeTeam}} {{homeScore}}-{{awayScore}} {{awayTeam}}, voilà comment ça se termine."
+      },
+      "goal": {
+        "0": "BUT ! {{player}} trouve le chemin des filets pour {{team}} ! {{homeScore}}-{{awayScore}}.",
+        "1": "{{player}} marque pour {{team}} à la {{minute}}e minute ! {{homeScore}}-{{awayScore}}.",
+        "2": "Quelle finition de {{player}} ! {{team}} est récompensé : {{homeScore}}-{{awayScore}}.",
+        "3": "C'est dedans ! {{player}} frappe pour {{team}} — {{homeScore}}-{{awayScore}}."
+      },
+      "goalOpener": {
+        "0": "{{player}} débloque la situation ! {{team}} mène {{homeScore}}-{{awayScore}}.",
+        "1": "Premier coup pour {{team}} — {{player}} ouvre le score !",
+        "2": "Voilà le premier but ! {{player}} place {{team}} devant."
+      },
+      "goalEqualizer": {
+        "0": "{{player}} égalise pour {{team}} ! Tout est à refaire : {{homeScore}}-{{awayScore}}.",
+        "1": "Égalité à nouveau ! {{player}} ramène {{team}} à hauteur.",
+        "2": "{{team}} revient dans le match — {{player}} fait {{homeScore}}-{{awayScore}} !"
+      },
+      "goalGoAhead": {
+        "0": "{{player}} donne l'avantage à {{team}} ! {{homeScore}}-{{awayScore}}.",
+        "1": "{{team}} prend les devants grâce à {{player}} !",
+        "2": "Le match bascule — {{player}} place {{team}} devant à {{homeScore}}-{{awayScore}} !"
+      },
+      "goalLate": {
+        "0": "But tardif ! {{player}} frappe pour {{team}} à la {{minute}}e minute !",
+        "1": "Du suspense en fin de match — {{player}} marque pour {{team}} ! {{homeScore}}-{{awayScore}}.",
+        "2": "{{player}} surgit avec un but précieux pour {{team}} en fin de rencontre !"
+      },
+      "goalStoppageWinner": {
+        "0": "INCROYABLE ! {{player}} offre la victoire à {{team}} dans le temps additionnel ! {{homeScore}}-{{awayScore}} !",
+        "1": "Un but victorieux dans le temps additionnel ! {{player}} fait chavirer les supporters de {{team}} !",
+        "2": "Au bout du bout, {{player}} arrache la décision pour {{team}} ! Quel scénario !"
+      },
+      "goalBrace": {
+        "0": "{{player}} récidive ! Un doublé, et le score passe à {{homeScore}}-{{awayScore}}.",
+        "1": "Deuxième but pour {{player}} ! {{team}} s'envole à {{homeScore}}-{{awayScore}}."
+      },
+      "goalHatTrick": {
+        "0": "TRIPLÉ ! {{player}} en est à trois ! Une soirée magique devant le but !",
+        "1": "{{player}} complète son triplé ! Tout simplement sensationnel pour {{team}} !",
+        "2": "Trois buts pour {{player}} ! Le ballon du match est mérité — {{team}} rêve !"
+      },
+      "penaltyGoal": {
+        "0": "{{player}} s'élance... et transforme le penalty ! {{homeScore}}-{{awayScore}}.",
+        "1": "Avec un sang-froid remarquable, {{player}} convertit depuis le point de penalty pour {{team}}.",
+        "2": "Aucune erreur à onze mètres ! {{player}} marque le penalty : {{homeScore}}-{{awayScore}}."
+      },
+      "penaltyMiss": {
+        "0": "{{player}} manque le penalty ! Quel soulagement pour {{opponent}} !",
+        "1": "Ça ne rentre pas ! {{player}} échoue depuis le point de penalty pour {{team}} !",
+        "2": "La pression était trop forte — {{player}} gâche le penalty et {{opponent}} respire !"
+      },
+      "penaltyAwarded": {
+        "0": "Penalty pour {{team}} ! L'arbitre désigne le point fatidique !",
+        "1": "C'est penalty ! Une occasion en or pour {{team}} à onze mètres !"
+      },
+      "yellowCard": {
+        "0": "{{player}} prend un carton jaune pour {{team}}.",
+        "1": "Carton jaune pour {{player}} après une intervention imprudente."
+      },
+      "redCard": {
+        "0": "CARTON ROUGE ! {{player}} est expulsé et {{team}} se retrouve à {{menLeft}} !",
+        "1": "{{player}} voit rouge ! Une catastrophe pour {{team}} !",
+        "2": "Expulsion ! L'arbitre adresse un rouge direct à {{player}} et {{team}} doit se réorganiser."
+      },
+      "secondYellow": {
+        "0": "Deuxième jaune pour {{player}} — synonyme de rouge ! {{team}} se retrouve à {{menLeft}} !",
+        "1": "{{player}} est expulsé ! Deux avertissements, et {{team}} le paie cher."
+      },
+      "substitution": {
+        "0": "Changement pour {{team}} : {{playerOn}} remplace {{playerOff}}.",
+        "1": "{{team}} procède à un changement — {{playerOn}} entre à la place de {{playerOff}}."
+      },
+      "injury": {
+        "0": "{{player}} est au sol et a besoin de soins. Inquiétude pour {{team}}.",
+        "1": "Coup dur pour {{team}} — {{player}} ne peut pas continuer sans l'intervention des soigneurs."
+      },
+      "shotSaved": {
+        "0": "{{player}} force le gardien de {{opponent}} à la parade !",
+        "1": "Belle tentative de {{player}}, mais le gardien est à la hauteur."
+      },
+      "shotOffTarget": {
+        "0": "{{player}} arme sa frappe... mais c'est à côté.",
+        "1": "Non cadré ! {{player}} ne trouve pas le cadre."
+      },
+      "shotBlocked": {
+        "0": "Contré ! Les défenseurs se jettent pour stopper {{player}}.",
+        "1": "Un contre décisif repousse la tentative de {{player}} !"
+      },
+      "corner": {
+        "0": "Corner pour {{team}} — l'occasion de peser dans la surface.",
+        "1": "{{team}} obtient un corner et le centre arrive."
+      },
+      "freeKick": {
+        "0": "Coup franc pour {{team}} dans une position intéressante.",
+        "1": "L'arbitre accorde un coup franc à {{team}}."
+      },
+      "foul": {
+        "0": "{{player}} commet la faute et le jeu est arrêté.",
+        "1": "Faute de {{player}} — l'arbitre le rappelle à l'ordre."
+      }
+    },
+    "summary": {
+      "title": "Résumé du match",
+      "goallessDraw": {
+        "0": "Score nul et vierge entre {{homeTeam}} et {{awayTeam}} — des occasions, mais aucune équipe n'a trouvé la faille.",
+        "1": "{{homeTeam}} et {{awayTeam}} se quittent sur un 0-0, les défenses ayant pris le dessus."
+      },
+      "scoreDraw": {
+        "0": "{{homeTeam}} et {{awayTeam}} se partagent les points sur un nul {{homeScore}}-{{awayScore}}.",
+        "1": "Match nul : {{homeTeam}} {{homeScore}}-{{awayScore}} {{awayTeam}}, un résultat logique au vu du jeu."
+      },
+      "narrowWin": {
+        "0": "{{winner}} s'impose dans un duel serré face à {{loser}}, {{homeScore}}-{{awayScore}}.",
+        "1": "Victoire étriquée {{homeScore}}-{{awayScore}} pour {{winner}}, qui a tenu bon dans les moments chauds."
+      },
+      "comfortableWin": {
+        "0": "{{winner}} s'impose confortablement {{homeScore}}-{{awayScore}} face à {{loser}}.",
+        "1": "Une prestation maîtrisée de {{winner}}, vainqueur de {{loser}} {{homeScore}}-{{awayScore}}."
+      },
+      "routWin": {
+        "0": "Quelle démonstration ! {{winner}} a écrasé {{loser}} {{homeScore}}-{{awayScore}}.",
+        "1": "{{winner}} a été impitoyable et a corrigé {{loser}} {{homeScore}}-{{awayScore}}."
+      },
+      "comebackWin": {
+        "0": "Quelle remontée ! {{winner}} renverse {{loser}} pour s'imposer {{homeScore}}-{{awayScore}}.",
+        "1": "{{winner}} a refusé la défaite et est revenu pour battre {{loser}} {{homeScore}}-{{awayScore}}."
+      },
+      "upsetWin": {
+        "0": "Sensation ! {{winner}} a défié le classement pour battre {{loser}} {{homeScore}}-{{awayScore}}.",
+        "1": "Personne ne l'avait vu venir — {{winner}} a surpris {{loser}} sur le score de {{homeScore}}-{{awayScore}}."
+      },
+      "topScorerBrace": {
+        "0": "{{player}} a brillé avec un doublé pour {{team}}.",
+        "1": "Deux buts de {{player}} ont montré la voie à {{team}}."
+      },
+      "topScorerHatTrick": {
+        "0": "{{player}} a fait les gros titres avec un triplé pour {{team}}.",
+        "1": "Un triplé héroïque : {{player}} a frappé trois fois pour {{team}}."
+      },
+      "redCardMoment": {
+        "0": "Le carton rouge de {{player}} à la {{minute}}e minute a laissé {{team}} en infériorité et a pesé sur le match.",
+        "1": "{{team}} a perdu {{player}}, expulsé à la {{minute}}e minute, et cela a changé la physionomie de la rencontre."
+      },
+      "lateDrama": {
+        "0": "Le moment décisif est arrivé tard, {{player}} frappant à la {{minute}}e minute.",
+        "1": "Tout s'est joué dans les derniers instants — {{player}} a porté le coup décisif en fin de match."
+      }
     }
   },
   "endOfSeason": {

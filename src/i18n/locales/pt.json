@@ -1243,6 +1243,15 @@
       "dark": "Escuro",
       "system": "Sistema"
     },
+    "accentTheme": "Cor de destaque",
+    "accentThemeDesc": "Escolha a paleta de cores principal da aplicação",
+    "accentThemeOptions": {
+      "emerald": "Esmeralda",
+      "sapphire": "Safira",
+      "crimson": "Carmesim",
+      "amber": "Âmbar",
+      "violet": "Violeta"
+    },
     "language": "Idioma",
     "languageDesc": "Escolhe o idioma de exibição",
     "currency": "Moeda",

@@ -1,10 +1,15 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { EventFeed } from "./MatchPanels";
 import type { MatchEvent, MatchSnapshot } from "./types";
 import { getEventCommentary } from "../../lib/commentary";
+import { useSettingsStore } from "../../store/settingsStore";
 import en from "../../i18n/locales/en.json";
+
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: vi.fn(),
+}));
 
 function translate(
   key: string,
@@ -104,6 +109,39 @@ function makeEvent(
 }
 
 describe("EventFeed", () => {
+  afterEach(() => {
+    useSettingsStore.setState((state) => ({
+      settings: { ...state.settings, show_match_commentary: true },
+    }));
+  });
+
+  it("hides commentary lines when match commentary is disabled in settings", () => {
+    useSettingsStore.setState((state) => ({
+      settings: { ...state.settings, show_match_commentary: false },
+    }));
+    const events = [makeEvent(10, "Goal", "Home", "h1")];
+    const snapshot = makeSnapshot(events);
+
+    render(
+      <EventFeed
+        events={events}
+        snapshot={snapshot}
+        feedRef={{ current: null }}
+      />,
+    );
+
+    const line = getEventCommentary(
+      events,
+      0,
+      { homeName: "Alpha FC", awayName: "Beta FC" },
+      (id) => (id === "h1" ? "Alice" : ""),
+    );
+    expect(line).not.toBeNull();
+    expect(
+      screen.queryByText(translate(line!.key, line!.params)),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders a commentary line for every narrated event", () => {
     const events = [
       makeEvent(10, "Goal", "Home", "h1"),

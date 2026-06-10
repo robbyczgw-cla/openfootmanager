@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { MatchSnapshot, MatchEvent, EnginePlayerData } from "./types";
 import { getEventDisplay, getEventTypeLabel, getPlayerName } from "./helpers";
 import { getEventCommentary } from "../../lib/commentary";
+import { useSettingsStore } from "../../store/settingsStore";
 import { Badge } from "../ui";
 import { translatePositionAbbreviation } from "../squad/SquadTab.helpers";
 
@@ -15,6 +16,9 @@ export function EventFeed({
   feedRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const { t } = useTranslation();
+  const showCommentary = useSettingsStore(
+    (state) => state.settings.show_match_commentary,
+  );
   const commentaryTeams = {
     homeName: snapshot.home_team.name,
     awayName: snapshot.away_team.name,
@@ -33,12 +37,9 @@ export function EventFeed({
         events.map((evt, i) => {
           const display = getEventDisplay(evt);
           const isHome = evt.side === "Home";
-          const commentary = getEventCommentary(
-            events,
-            i,
-            commentaryTeams,
-            resolveCommentaryName,
-          );
+          const commentary = showCommentary
+            ? getEventCommentary(events, i, commentaryTeams, resolveCommentaryName)
+            : null;
           return (
             <div
               key={i}

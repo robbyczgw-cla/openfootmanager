@@ -1740,6 +1740,170 @@
       "FreeKick": "任意球",
       "Foul": "犯规",
       "PenaltyAwarded": "判罚点球"
+    },
+    "commentary": {
+      "kickOff": {
+        "0": "比赛开始！{{homeTeam}}率先开球，对阵{{awayTeam}}。",
+        "1": "裁判鸣哨，比赛正式开始！"
+      },
+      "halfTime": {
+        "0": "上半场结束。{{homeTeam}} {{homeScore}}-{{awayScore}} {{awayTeam}}，双方进入中场休息。",
+        "1": "忙碌的上半场告一段落——比分{{homeScore}}-{{awayScore}}，球员们返回更衣室。"
+      },
+      "secondHalfStart": {
+        "0": "下半场比赛开始！",
+        "1": "球员们重新登场，下半场开打！"
+      },
+      "fullTime": {
+        "0": "终场哨响！最终比分：{{homeTeam}} {{homeScore}}-{{awayScore}} {{awayTeam}}。",
+        "1": "全场比赛结束。{{homeTeam}} {{homeScore}}-{{awayScore}} {{awayTeam}}。"
+      },
+      "goal": {
+        "0": "进球了！{{player}}为{{team}}破门！比分{{homeScore}}-{{awayScore}}。",
+        "1": "第{{minute}}分钟，{{player}}为{{team}}建功！{{homeScore}}-{{awayScore}}。",
+        "2": "{{player}}完成精彩一击，{{team}}收获进球！{{homeScore}}-{{awayScore}}。",
+        "3": "球进了！{{player}}为{{team}}得分——{{homeScore}}-{{awayScore}}。"
+      },
+      "goalOpener": {
+        "0": "{{player}}打破僵局！{{team}}以{{homeScore}}-{{awayScore}}领先。",
+        "1": "{{team}}先拔头筹——{{player}}首开纪录！",
+        "2": "首粒进球到来！{{player}}让{{team}}取得领先。"
+      },
+      "goalEqualizer": {
+        "0": "{{player}}为{{team}}扳平比分！{{homeScore}}-{{awayScore}}，双方战平。",
+        "1": "比分又回到同一起跑线！{{player}}帮助{{team}}追平。",
+        "2": "{{team}}重新回到比赛——{{player}}将比分改写为{{homeScore}}-{{awayScore}}！"
+      },
+      "goalGoAhead": {
+        "0": "{{player}}让{{team}}取得领先！{{homeScore}}-{{awayScore}}。",
+        "1": "{{team}}凭借{{player}}的进球反超！",
+        "2": "势头逆转——{{player}}助{{team}}以{{homeScore}}-{{awayScore}}领先！"
+      },
+      "goalLate": {
+        "0": "比赛尾声进球！第{{minute}}分钟，{{player}}为{{team}}破门！",
+        "1": "终场前风云突变——{{player}}为{{team}}得分！{{homeScore}}-{{awayScore}}。",
+        "2": "{{player}}在最后阶段为{{team}}打入宝贵一球！"
+      },
+      "goalStoppageWinner": {
+        "0": "难以置信！{{player}}在伤停补时为{{team}}锁定胜局！{{homeScore}}-{{awayScore}}！",
+        "1": "补时绝杀！{{player}}让{{team}}球迷陷入疯狂！",
+        "2": "就在最后一刻，{{player}}为{{team}}一锤定音！不可思议！"
+      },
+      "goalBrace": {
+        "0": "{{player}}再下一城——梅开二度！比分{{homeScore}}-{{awayScore}}。",
+        "1": "{{player}}的第二粒进球！{{team}}状态火热——{{homeScore}}-{{awayScore}}。"
+      },
+      "goalHatTrick": {
+        "0": "帽子戏法！{{player}}独中三元！门前的魔幻之夜！",
+        "1": "{{player}}上演帽子戏法！{{team}}的超级表演！",
+        "2": "{{player}}打入第三球！把比赛用球带回家吧——{{team}}在憧憬胜利！"
+      },
+      "penaltyGoal": {
+        "0": "{{player}}助跑……点球命中！{{homeScore}}-{{awayScore}}。",
+        "1": "冷静至极——{{player}}为{{team}}罚入点球。",
+        "2": "十二码毫无失误！{{player}}点球破门，比分{{homeScore}}-{{awayScore}}。"
+      },
+      "penaltyMiss": {
+        "0": "{{player}}点球罚丢！{{opponent}}逃过一劫！",
+        "1": "没有进！{{player}}未能为{{team}}罚进点球！",
+        "2": "压力之下——{{player}}浪费点球，{{opponent}}幸存下来！"
+      },
+      "penaltyAwarded": {
+        "0": "{{team}}获得点球！裁判指向点球点！",
+        "1": "点球！{{team}}迎来十二码良机！"
+      },
+      "yellowCard": {
+        "0": "{{team}}的{{player}}被记入黄牌。",
+        "1": "{{player}}因鲁莽犯规吃到黄牌。"
+      },
+      "redCard": {
+        "0": "红牌！{{player}}被罚下，{{team}}只剩{{menLeft}}人应战！",
+        "1": "{{player}}染红离场！对{{team}}来说是场灾难！",
+        "2": "罚下！裁判向{{player}}直接出示红牌，{{team}}必须重新调整。"
+      },
+      "secondYellow": {
+        "0": "{{player}}两黄变一红！{{team}}只剩{{menLeft}}人！",
+        "1": "{{player}}被罚下场！两张黄牌，{{team}}付出代价。"
+      },
+      "substitution": {
+        "0": "{{team}}进行换人：{{playerOn}}替下{{playerOff}}。",
+        "1": "{{team}}做出调整——{{playerOn}}登场换下{{playerOff}}。"
+      },
+      "injury": {
+        "0": "{{player}}倒地需要治疗，{{team}}的隐忧出现了。",
+        "1": "{{team}}遇到麻烦——{{player}}需要队医处理才能继续。"
+      },
+      "shotSaved": {
+        "0": "{{player}}的射门迫使{{opponent}}门将做出扑救！",
+        "1": "{{player}}的尝试不错，但门将稳稳化解。"
+      },
+      "shotOffTarget": {
+        "0": "{{player}}起脚怒射……可惜偏出。",
+        "1": "偏出目标！{{player}}没能命中球门范围。"
+      },
+      "shotBlocked": {
+        "0": "被封堵！防守球员舍身挡出{{player}}的射门。",
+        "1": "关键封堵挡住了{{player}}！"
+      },
+      "corner": {
+        "0": "{{team}}获得角球——往禁区里传中的机会。",
+        "1": "{{team}}赢得角球，传中即将到来。"
+      },
+      "freeKick": {
+        "0": "{{team}}在危险区域获得任意球。",
+        "1": "裁判判给{{team}}一个任意球。"
+      },
+      "foul": {
+        "0": "{{player}}犯规，比赛暂停。",
+        "1": "{{player}}的犯规——裁判提出警告。"
+      }
+    },
+    "summary": {
+      "title": "比赛总结",
+      "goallessDraw": {
+        "0": "{{homeTeam}}与{{awayTeam}}互交白卷——机会不少，但谁也未能取得进球。",
+        "1": "{{homeTeam}}和{{awayTeam}}0-0握手言和，双方防线表现出色。"
+      },
+      "scoreDraw": {
+        "0": "{{homeTeam}}与{{awayTeam}}以{{homeScore}}-{{awayScore}}战平，各取一分。",
+        "1": "平分秋色：{{homeTeam}} {{homeScore}}-{{awayScore}} {{awayTeam}}，从场面看是个公平的结果。"
+      },
+      "narrowWin": {
+        "0": "{{winner}}在一场胶着的较量中以{{homeScore}}-{{awayScore}}险胜{{loser}}。",
+        "1": "{{winner}}以{{homeScore}}-{{awayScore}}小胜，在关键时刻顶住了压力。"
+      },
+      "comfortableWin": {
+        "0": "{{winner}}以{{homeScore}}-{{awayScore}}轻取{{loser}}。",
+        "1": "{{winner}}掌控全局，以{{homeScore}}-{{awayScore}}击败{{loser}}。"
+      },
+      "routWin": {
+        "0": "一场大胜！{{winner}}以{{homeScore}}-{{awayScore}}横扫{{loser}}。",
+        "1": "{{winner}}毫不留情，以{{homeScore}}-{{awayScore}}痛击{{loser}}。"
+      },
+      "comebackWin": {
+        "0": "精彩的逆转！{{winner}}在落后的情况下以{{homeScore}}-{{awayScore}}击败{{loser}}。",
+        "1": "{{winner}}拒绝认输，逆转以{{homeScore}}-{{awayScore}}战胜{{loser}}。"
+      },
+      "upsetWin": {
+        "0": "爆冷！{{winner}}无视排名差距，以{{homeScore}}-{{awayScore}}击败{{loser}}。",
+        "1": "谁也没有料到——{{winner}}以{{homeScore}}-{{awayScore}}令{{loser}}震惊。"
+      },
+      "topScorerBrace": {
+        "0": "{{player}}梅开二度，成为{{team}}的头号功臣。",
+        "1": "{{player}}的两粒进球为{{team}}指明方向。"
+      },
+      "topScorerHatTrick": {
+        "0": "{{player}}上演帽子戏法，为{{team}}抢尽风头。",
+        "1": "帽子戏法英雄：{{player}}为{{team}}连入三球。"
+      },
+      "redCardMoment": {
+        "0": "{{player}}在第{{minute}}分钟的红牌让{{team}}陷入少打多，左右了比赛走势。",
+        "1": "{{team}}的{{player}}在第{{minute}}分钟被罚下，比赛因此改变。"
+      },
+      "lateDrama": {
+        "0": "决定性时刻姗姗来迟——{{player}}在第{{minute}}分钟一锤定音。",
+        "1": "悬念保持到了最后——{{player}}在比赛尾声给出致命一击。"
+      }
     }
   },
   "endOfSeason": {

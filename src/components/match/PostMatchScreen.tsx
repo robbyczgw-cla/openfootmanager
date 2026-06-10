@@ -11,6 +11,7 @@ import {
   TeamTalkTone,
 } from "./types";
 import { getEventDisplay, getPlayerName } from "./helpers";
+import { generateMatchSummary } from "../../lib/commentary";
 import { getTalkIcon } from "./TeamTalkIcons";
 import { Badge, ThemeToggle } from "../ui";
 import {
@@ -224,6 +225,36 @@ export default function PostMatchScreen({
     : null;
   const selectedOtherFixtureReport = getFixtureReport(selectedOtherFixture);
 
+  // Generated match summary paragraph (result framing + key moments)
+  const sortedStandings = gameState.league?.standings
+    ? [...gameState.league.standings].sort(
+      (a, b) =>
+        b.points - a.points ||
+        b.goals_for - b.goals_against - (a.goals_for - a.goals_against) ||
+        b.goals_for - a.goals_for,
+    )
+    : null;
+  const leaguePositionOf = (teamId: string): number | null => {
+    if (!isLeagueFixture || !sortedStandings) return null;
+    const index = sortedStandings.findIndex(
+      (entry) => entry.team_id === teamId,
+    );
+    return index >= 0 ? index + 1 : null;
+  };
+  const summaryLines = generateMatchSummary({
+    homeName: snapshot.home_team.name,
+    awayName: snapshot.away_team.name,
+    homeScore: snapshot.home_score,
+    awayScore: snapshot.away_score,
+    events: snapshot.events,
+    resolvePlayerName: (playerId) => getPlayerName(snapshot, playerId),
+    homePosition: leaguePositionOf(snapshot.home_team.id),
+    awayPosition: leaguePositionOf(snapshot.away_team.id),
+  });
+  const summaryText = summaryLines
+    .map((line) => t(line.key, line.params))
+    .join(" ");
+
   // Key events (goals, cards, subs)
   const keyEvents = importantEvents.filter((e) =>
     [
@@ -389,8 +420,20 @@ export default function PostMatchScreen({
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
         <div className="max-w-5xl mx-auto px-6 py-6 grid grid-cols-3 gap-6">
-          {/* Left: Match Events */}
+          {/* Left: Match Summary + Events */}
           <div className="flex flex-col gap-4">
+            <div className="bg-white dark:bg-navy-800 rounded-xl border border-gray-200 dark:border-navy-700 shadow-sm p-4 transition-colors duration-300">
+              <h3 className="text-xs font-heading font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">
+                {t("match.summary.title")}
+              </h3>
+              <p
+                data-testid="match-summary"
+                className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed"
+              >
+                {summaryText}
+              </p>
+            </div>
+
             <div className="bg-white dark:bg-navy-800 rounded-xl border border-gray-200 dark:border-navy-700 shadow-sm p-4 transition-colors duration-300">
               <h3 className="text-xs font-heading font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">
                 {t("match.matchEvents")}

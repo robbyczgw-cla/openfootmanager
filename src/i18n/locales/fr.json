@@ -1228,6 +1228,15 @@
       "dark": "Sombre",
       "system": "Système"
     },
+    "accentTheme": "Couleur d'accent",
+    "accentThemeDesc": "Choisissez la palette de couleurs principale de l'application",
+    "accentThemeOptions": {
+      "emerald": "Émeraude",
+      "sapphire": "Saphir",
+      "crimson": "Cramoisi",
+      "amber": "Ambre",
+      "violet": "Violet"
+    },
     "language": "Langue",
     "languageDesc": "Choisissez la langue d'affichage",
     "currency": "Devise",

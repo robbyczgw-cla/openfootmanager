@@ -1228,6 +1228,15 @@
       "dark": "深色",
       "system": "系统"
     },
+    "accentTheme": "主题色",
+    "accentThemeDesc": "选择应用的主色调",
+    "accentThemeOptions": {
+      "emerald": "翡翠绿",
+      "sapphire": "宝石蓝",
+      "crimson": "绯红",
+      "amber": "琥珀",
+      "violet": "紫罗兰"
+    },
     "language": "语言",
     "languageDesc": "选择显示语言",
     "currency": "货币",

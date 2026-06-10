@@ -17,6 +17,7 @@ const DEFAULT_SETTINGS = {
   confirm_advance: false,
   ui_scale: "normal",
   high_contrast: false,
+  accent_theme: "emerald",
 } as const;
 
 const SUPPORTED_CURRENCIES = [
@@ -122,6 +123,32 @@ describe("useSettingsStore", () => {
       },
     });
     expect(useSettingsStore.getState().currency).toEqual(SUPPORTED_CURRENCIES[2]);
+  });
+
+  it("merges a missing accent theme to the emerald default and persists changes", async () => {
+    vi.mocked(invoke).mockResolvedValue({
+      settings: {
+        language: "fr",
+      },
+      currency: SUPPORTED_CURRENCIES[0],
+      supported_currencies: SUPPORTED_CURRENCIES,
+    });
+
+    await useSettingsStore.getState().loadSettings();
+
+    expect(useSettingsStore.getState().settings.accent_theme).toBe("emerald");
+
+    vi.mocked(invoke).mockResolvedValue(undefined);
+    await useSettingsStore.getState().updateSettings({ accent_theme: "sapphire" });
+
+    expect(useSettingsStore.getState().settings.accent_theme).toBe("sapphire");
+    expect(invoke).toHaveBeenLastCalledWith("save_settings", {
+      settings: {
+        ...DEFAULT_SETTINGS,
+        language: "fr",
+        accent_theme: "sapphire",
+      },
+    });
   });
 
   it("rolls back the local update when saving fails and reports the error", async () => {

@@ -1228,6 +1228,15 @@
       "dark": "Dunkel",
       "system": "System"
     },
+    "accentTheme": "Akzentfarbe",
+    "accentThemeDesc": "Wähle die primäre Farbpalette der Oberfläche",
+    "accentThemeOptions": {
+      "emerald": "Smaragd",
+      "sapphire": "Saphir",
+      "crimson": "Karmesin",
+      "amber": "Bernstein",
+      "violet": "Violett"
+    },
     "language": "Sprache",
     "languageDesc": "Wähle die Anzeigesprache",
     "currency": "Währung",

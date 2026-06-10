@@ -29,6 +29,20 @@ const CURRENCY_OPTIONS = [
 ] as const;
 
 const THEME_OPTION_KEYS = ["light", "dark", "system"] as const;
+const ACCENT_THEME_KEYS = [
+  "emerald",
+  "sapphire",
+  "crimson",
+  "amber",
+  "violet",
+] as const;
+const ACCENT_SWATCHES: Record<(typeof ACCENT_THEME_KEYS)[number], string> = {
+  emerald: "#10b981",
+  sapphire: "#3b82f6",
+  crimson: "#f43f5e",
+  amber: "#f97316",
+  violet: "#8b5cf6",
+};
 const MATCH_MODE_KEYS = ["live", "spectator", "delegate"] as const;
 const MATCH_SPEED_KEYS = ["slow", "normal", "fast"] as const;
 const UI_SCALE_KEYS = ["small", "normal", "large", "xlarge"] as const;
@@ -174,6 +188,28 @@ export default function Settings() {
               value={settings.theme}
               onChange={(v) =>
                 handleUpdate({ theme: v as AppSettings["theme"] })
+              }
+            />
+          </SettingRow>
+
+          <SettingRow
+            label={t("settings.accentTheme")}
+            description={t("settings.accentThemeDesc")}
+          >
+            <SegmentedControl
+              options={ACCENT_THEME_KEYS.map((key) => ({
+                value: key,
+                label: t(`settings.accentThemeOptions.${key}`),
+                icon: (
+                  <span
+                    className="w-3 h-3 rounded-full inline-block"
+                    style={{ backgroundColor: ACCENT_SWATCHES[key] }}
+                  />
+                ),
+              }))}
+              value={settings.accent_theme}
+              onChange={(v) =>
+                handleUpdate({ accent_theme: v as AppSettings["accent_theme"] })
               }
             />
           </SettingRow>

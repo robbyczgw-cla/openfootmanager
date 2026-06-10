@@ -1247,6 +1247,15 @@
       "dark": "Scuro",
       "system": "Sistema"
     },
+    "accentTheme": "Colore d'accento",
+    "accentThemeDesc": "Scegli la palette di colori principale dell'app",
+    "accentThemeOptions": {
+      "emerald": "Smeraldo",
+      "sapphire": "Zaffiro",
+      "crimson": "Cremisi",
+      "amber": "Ambra",
+      "violet": "Viola"
+    },
     "language": "Lingua",
     "languageDesc": "Scegli la lingua dell'interfaccia",
     "currency": "Valuta",

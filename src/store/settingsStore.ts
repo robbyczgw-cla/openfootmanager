@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 
+export type AccentTheme = "emerald" | "sapphire" | "crimson" | "amber" | "violet";
+
 export interface AppSettings {
   theme: "dark" | "light" | "system";
   language: string;
@@ -12,6 +14,7 @@ export interface AppSettings {
   confirm_advance: boolean;
   ui_scale: "small" | "normal" | "large" | "xlarge";
   high_contrast: boolean;
+  accent_theme: AccentTheme;
 }
 
 export interface CurrencyDefinition {
@@ -37,6 +40,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   confirm_advance: false,
   ui_scale: "normal",
   high_contrast: false,
+  accent_theme: "emerald",
 };
 
 const DEFAULT_CURRENCY: CurrencyDefinition = {

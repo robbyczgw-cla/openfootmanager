@@ -173,6 +173,7 @@ pub enum FinancialTransactionKind {
     ContractTermination,
     BoardSupport,
     CommercialCampaign,
+    Merchandise,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

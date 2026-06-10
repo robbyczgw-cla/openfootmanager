@@ -59,6 +59,8 @@ vi.mock("react-i18next", () => ({
       if (key === "finances.weeklyWageSpend") return "Weekly Wage Spend";
       if (key === "finances.weeklySponsorIncome")
         return "Weekly Sponsor Income";
+      if (key === "finances.weeklyMerchandiseIncome")
+        return "Weekly Merchandise Income";
       if (key === "finances.projectedWeeklyNet") return "Projected Weekly Net";
       if (key === "finances.cashRunway") return "Cash Runway";
       if (key === "finances.runwayWeeks")
@@ -506,6 +508,7 @@ describe("FinancesTab facilities", () => {
             weekly_wage_budget: 962,
             weekly_recurring_income: 0,
             weekly_sponsor_income: 0,
+            weekly_merchandise_income: 500,
             projected_weekly_net: -100000,
             cash_runway_weeks: 9,
             wage_budget_usage_percent: 10400,
@@ -572,6 +575,7 @@ describe("FinancesTab facilities", () => {
             weekly_wage_budget: 962,
             weekly_recurring_income: 0,
             weekly_sponsor_income: 0,
+            weekly_merchandise_income: 500,
             projected_weekly_net: -100000,
             cash_runway_weeks: 3,
             wage_budget_usage_percent: 10400,
@@ -637,6 +641,7 @@ describe("FinancesTab facilities", () => {
             weekly_wage_budget: 962,
             weekly_recurring_income: 0,
             weekly_sponsor_income: 0,
+            weekly_merchandise_income: 500,
             projected_weekly_net: -100000,
             cash_runway_weeks: 3,
             wage_budget_usage_percent: 10400,
@@ -709,6 +714,7 @@ describe("FinancesTab facilities", () => {
             weekly_wage_budget: 962,
             weekly_recurring_income: 0,
             weekly_sponsor_income: 0,
+            weekly_merchandise_income: 500,
             projected_weekly_net: -100000,
             cash_runway_weeks: 3,
             wage_budget_usage_percent: 10400,
@@ -750,6 +756,7 @@ describe("FinancesTab facilities", () => {
             weekly_wage_budget: 38461,
             weekly_recurring_income: 0,
             weekly_sponsor_income: 0,
+            weekly_merchandise_income: 500,
             projected_weekly_net: -1700,
             cash_runway_weeks: 8,
             wage_budget_usage_percent: 4,
@@ -854,6 +861,16 @@ describe("FinancesTab facilities", () => {
     expect(onSelectPlayer).toHaveBeenCalledWith("player-critical", {
       openRenewal: true,
     });
+  });
+
+  it("renders weekly merchandise income in the cash-flow panel", () => {
+    const gameState = createGameState({ reputation: 700 });
+
+    render(<FinancesTab gameState={gameState} />);
+
+    expect(screen.getByText("Weekly Merchandise Income")).toBeInTheDocument();
+    // Local fallback: reputation 700 * 6 at neutral fan approval = 4,200/week.
+    expect(screen.getAllByText("€4K/wk").length).toBeGreaterThan(0);
   });
 
   it("delegates only the selected risky renewals to the assistant and publishes the updated state", async () => {

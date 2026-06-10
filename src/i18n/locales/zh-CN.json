@@ -782,6 +782,7 @@
     "cashFlow": "现金流",
     "weeklyWageSpend": "每周工资支出",
     "weeklySponsorIncome": "每周赞助收入",
+    "weeklyMerchandiseIncome": "每周周边商品收入",
     "projectedWeeklyNet": "预计每周净收益",
     "cashRunway": "现金续航",
     "runwayWeeks": "按当前节奏可维持 {{count}} 周",

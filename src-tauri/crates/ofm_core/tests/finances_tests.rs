@@ -150,12 +150,16 @@ fn team_finance_snapshot_uses_canonical_backend_values() {
 
     let snapshot = finances::team_finance_snapshot(&game, "team1").expect("snapshot");
 
+    // Default test team: reputation 500, neutral fan approval, no league position.
+    let merchandise_income = finances::weekly_merchandise_income(&game.teams[0], None, 50);
+    assert_eq!(merchandise_income, 3_000);
     assert_eq!(snapshot.annual_wage_bill, 88_400);
     assert_eq!(snapshot.weekly_wage_spend, 1_700);
     assert_eq!(snapshot.weekly_wage_budget, 2_000_000 / 52);
     assert_eq!(snapshot.weekly_sponsor_income, 2_000);
-    assert_eq!(snapshot.weekly_recurring_income, 2_000);
-    assert_eq!(snapshot.projected_weekly_net, 300);
+    assert_eq!(snapshot.weekly_merchandise_income, 3_000);
+    assert_eq!(snapshot.weekly_recurring_income, 5_000);
+    assert_eq!(snapshot.projected_weekly_net, 3_300);
     assert_eq!(snapshot.cash_runway_weeks, None);
     assert_eq!(snapshot.wage_budget_usage_percent, 4);
     assert!(!snapshot.currently_in_debt);
@@ -185,10 +189,11 @@ fn team_finance_snapshot_flags_wage_pressure() {
 fn team_finance_snapshot_flags_runway_crisis() {
     let mut game = make_monday_game();
     game.teams[0].finance = 3_400;
+    game.teams[0].reputation = 0; // merchandise income drops to the 500 floor
 
     let snapshot = finances::team_finance_snapshot(&game, "team1").expect("snapshot");
 
-    assert_eq!(snapshot.projected_weekly_net, -1_700);
+    assert_eq!(snapshot.projected_weekly_net, -1_200);
     assert_eq!(snapshot.cash_runway_weeks, Some(2));
     assert_eq!(
         snapshot.runway_status,
@@ -275,7 +280,8 @@ fn finance_action_previews_are_available_without_mutating_state() {
 #[test]
 fn request_board_support_can_recover_runway_without_random_events() {
     let mut game = make_monday_game();
-    game.teams[0].finance = 13_600;
+    game.teams[0].finance = 9_600;
+    game.teams[0].reputation = 0; // merchandise income drops to the 500 floor
 
     let preview = finances::preview_board_support(&game, "team1").expect("preview");
     let result = finances::request_board_support(&mut game, "team1").expect("support");
@@ -492,15 +498,20 @@ fn weekly_sponsorship_payout_is_applied_and_duration_decrements_on_monday() {
         }],
     });
 
+    let merchandise_income = finances::weekly_merchandise_income(&game.teams[0], None, 50);
+
     finances::process_weekly_finances(&mut game);
 
     let wages = (52_000 + 26_000 + 10_400) / 52;
     let expected_sponsor_income = 125_000;
     assert_eq!(
         game.teams[0].finance,
-        initial_finance - wages + expected_sponsor_income
+        initial_finance - wages + expected_sponsor_income + merchandise_income
     );
-    assert_eq!(game.teams[0].season_income, expected_sponsor_income);
+    assert_eq!(
+        game.teams[0].season_income,
+        expected_sponsor_income + merchandise_income
+    );
     assert_eq!(
         game.teams[0].sponsorship.as_ref().unwrap().remaining_weeks,
         1
@@ -526,6 +537,7 @@ fn sponsorship_expires_after_the_final_weekly_tick() {
 fn wages_deducted_on_monday() {
     let mut game = make_monday_game();
     let initial_finance = game.teams[0].finance;
+    let merchandise_income = finances::weekly_merchandise_income(&game.teams[0], None, 50);
 
     finances::process_weekly_finances(&mut game);
 
@@ -533,7 +545,7 @@ fn wages_deducted_on_monday() {
     let expected_deduction = (52_000 + 26_000 + 10_400) / 52;
     assert_eq!(
         game.teams[0].finance,
-        initial_finance - expected_deduction,
+        initial_finance - expected_deduction + merchandise_income,
         "Finance should be reduced by weekly wages"
     );
 }
@@ -618,6 +630,7 @@ fn warning_finances_reduce_board_satisfaction_midseason() {
 fn critical_finances_reduce_board_satisfaction_more_aggressively() {
     let mut game = make_monday_game();
     game.teams[0].finance = 3_400;
+    game.teams[0].reputation = 0; // merchandise income drops to the 500 floor
     game.manager.satisfaction = 60;
 
     finances::process_weekly_finances(&mut game);
@@ -701,6 +714,7 @@ fn warning_when_low_runway() {
     let mut game = make_monday_game();
     // Set finance to ~2 weeks of wages (weekly wages ~1700, so ~3400)
     game.teams[0].finance = 3400;
+    game.teams[0].reputation = 0; // merchandise income drops to the 500 floor
 
     finances::process_weekly_finances(&mut game);
 
@@ -709,7 +723,7 @@ fn warning_when_low_runway() {
         .iter()
         .filter(|m| m.id.starts_with("finance_warning_"))
         .collect();
-    // After deducting wages (1700), finance=1700, weeks_left=1700/1700=1 → < 4
+    // After wages (-1700) and merchandise (+500), finance=2200, weeks_left=2200/1200=1 → < 4
     assert_eq!(warning_msgs.len(), 1, "Should send low reserves warning");
 }
 
@@ -882,13 +896,15 @@ fn away_match_no_income() {
     game.league = Some(league);
 
     let initial_finance = game.teams[0].finance;
+    // team1 is the only standings entry, so it counts as league leader.
+    let merchandise_income = finances::weekly_merchandise_income(&game.teams[0], Some(1), 50);
     finances::process_weekly_finances(&mut game);
 
     let wages = (52_000 + 26_000 + 10_400) / 52;
     assert_eq!(
         game.teams[0].finance,
-        initial_finance - wages,
-        "Away match should generate no income for team1"
+        initial_finance - wages + merchandise_income,
+        "Away match should generate no matchday income for team1"
     );
 }
 
@@ -908,11 +924,19 @@ fn multiple_teams_processed_independently() {
 
     let initial_t1 = game.teams[0].finance;
     let initial_t2 = game.teams[1].finance;
+    let t1_merchandise = finances::weekly_merchandise_income(&game.teams[0], None, 50);
+    let t2_merchandise = finances::weekly_merchandise_income(&game.teams[1], None, 50);
 
     finances::process_weekly_finances(&mut game);
 
     let t1_wages = (52_000 + 26_000 + 10_400) / 52; // 1700
     let t2_wages = 104_000 / 52; // 2000
-    assert_eq!(game.teams[0].finance, initial_t1 - t1_wages);
-    assert_eq!(game.teams[1].finance, initial_t2 - t2_wages);
+    assert_eq!(
+        game.teams[0].finance,
+        initial_t1 - t1_wages + t1_merchandise
+    );
+    assert_eq!(
+        game.teams[1].finance,
+        initial_t2 - t2_wages + t2_merchandise
+    );
 }

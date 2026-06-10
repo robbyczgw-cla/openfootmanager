@@ -20,7 +20,8 @@ export type TransactionKind =
   | "PrizeMoney"
   | "ContractTermination"
   | "BoardSupport"
-  | "CommercialCampaign";
+  | "CommercialCampaign"
+  | "Merchandise";
 
 export interface FinancialTransactionData {
   date: string;

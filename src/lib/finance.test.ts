@@ -6,6 +6,7 @@ import {
   getAnnualWageBill,
   getCashRunwayWeeks,
   getTeamFinanceSnapshot,
+  getWeeklyMerchandiseIncome,
   getWeeklyWageSpend,
 } from "./finance";
 
@@ -156,11 +157,33 @@ describe("finance helpers", () => {
     expect(snapshot.annualWageBill).toBe(600000);
     expect(snapshot.weeklyWageSpend).toBe(11538);
     expect(snapshot.weeklyWageBudget).toBe(9615);
-    expect(snapshot.projectedWeeklyNet).toBe(-11538);
+    // Reputation 50 keeps merchandise income at the 500 floor.
+    expect(snapshot.weeklyMerchandiseIncome).toBe(500);
+    expect(snapshot.projectedWeeklyNet).toBe(-11038);
     expect(snapshot.cashRunwayWeeks).toBe(2);
     expect(snapshot.wageBudgetUsagePercent).toBe(120);
     expect(snapshot.wageBudgetStatus).toBe("critical");
     expect(snapshot.runwayStatus).toBe("critical");
     expect(snapshot.overallStatus).toBe("critical");
+  });
+
+  it("scales merchandise income with reputation, winning form, and fan approval", () => {
+    const baseline = getWeeklyMerchandiseIncome(
+      createTeam({ reputation: 600 }),
+    );
+    const inForm = getWeeklyMerchandiseIncome(
+      createTeam({ reputation: 600, form: ["W", "W", "L"] }),
+    );
+    const adored = getWeeklyMerchandiseIncome(
+      createTeam({ reputation: 600 }),
+      100,
+    );
+
+    expect(baseline).toBe(3600);
+    expect(inForm).toBe(4400);
+    expect(adored).toBe(5400);
+    expect(getWeeklyMerchandiseIncome(createTeam({ reputation: 0 }), 0)).toBe(
+      500,
+    );
   });
 });

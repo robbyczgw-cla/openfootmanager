@@ -782,6 +782,7 @@
     "cashFlow": "Fluxo de caixa",
     "weeklyWageSpend": "Despesa salarial semanal",
     "weeklySponsorIncome": "Receita semanal de patrocínio",
+    "weeklyMerchandiseIncome": "Receitas semanais de merchandising",
     "projectedWeeklyNet": "Líquido semanal projetado",
     "cashRunway": "Autonomia financeira",
     "runwayWeeks": "{{count}} semanas ao ritmo atual",

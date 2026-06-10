@@ -21,6 +21,11 @@ const SPONSOR_PITCH_DURATION_WEEKS: u32 = 12;
 const SPONSOR_PITCH_MIN_WEEKLY_AMOUNT: i64 = 40_000;
 const SPONSOR_PITCH_MAX_WEEKLY_AMOUNT: i64 = 180_000;
 const SPONSOR_PITCH_REPUTATION_MULTIPLIER: i64 = 120;
+const MERCHANDISE_MIN_WEEKLY_INCOME: i64 = 500;
+const MERCHANDISE_MAX_WEEKLY_INCOME: i64 = 75_000;
+const MERCHANDISE_REPUTATION_MULTIPLIER: i64 = 6;
+const MERCHANDISE_WIN_FORM_BONUS: i64 = 400;
+const MERCHANDISE_NEUTRAL_FAN_APPROVAL: u8 = 50;
 
 fn marketing_campaign_activation_description() -> String {
     ["Marketing", "campaign", "activation", "spend"].join(" ")
@@ -28,6 +33,10 @@ fn marketing_campaign_activation_description() -> String {
 
 fn marketing_campaign_revenue_description() -> String {
     ["Marketing", "campaign", "merchandise", "revenue"].join(" ")
+}
+
+fn merchandise_income_description() -> String {
+    ["Weekly", "merchandise", "sales", "income"].join(" ")
 }
 
 fn board_support_description(season: u32) -> String {
@@ -54,6 +63,7 @@ pub struct TeamFinanceSnapshot {
     pub weekly_wage_budget: i64,
     pub weekly_recurring_income: i64,
     pub weekly_sponsor_income: i64,
+    pub weekly_merchandise_income: i64,
     pub projected_weekly_net: i64,
     pub cash_runway_weeks: Option<i64>,
     pub wage_budget_usage_percent: u32,
@@ -237,6 +247,40 @@ pub fn calc_upkeep(_team: &Team) -> i64 {
     0
 }
 
+/// Weekly merchandise income for a club, scaled by reputation, fan approval,
+/// league position, and recent winning form.
+pub fn weekly_merchandise_income(
+    team: &Team,
+    current_position: Option<u32>,
+    fan_approval: u8,
+) -> i64 {
+    let reputation_component = team.reputation as i64 * MERCHANDISE_REPUTATION_MULTIPLIER;
+    let league_position_component = match current_position {
+        Some(1) => 3_000,
+        Some(2..=4) => 2_000,
+        Some(5..=8) => 1_000,
+        _ => 0,
+    };
+    let form_component = team
+        .form
+        .iter()
+        .filter(|result| result.as_str() == "W")
+        .count() as i64
+        * MERCHANDISE_WIN_FORM_BONUS;
+    let fan_multiplier = 50 + fan_approval.min(100) as i64;
+
+    ((reputation_component + league_position_component + form_component) * fan_multiplier / 100)
+        .clamp(MERCHANDISE_MIN_WEEKLY_INCOME, MERCHANDISE_MAX_WEEKLY_INCOME)
+}
+
+fn team_fan_approval(game: &Game, team_id: &str) -> u8 {
+    if game.manager.team_id.as_deref() == Some(team_id) {
+        game.manager.fan_approval
+    } else {
+        MERCHANDISE_NEUTRAL_FAN_APPROVAL
+    }
+}
+
 fn estimated_weekly_matchday_income(game: &Game, team: &Team) -> i64 {
     let recent_home_match_count = count_recent_home_matches(game, &team.id);
     if recent_home_match_count == 0 {
@@ -261,7 +305,10 @@ pub fn team_finance_snapshot(game: &Game, team_id: &str) -> Option<TeamFinanceSn
         })
         .unwrap_or(0);
     let weekly_matchday_income = estimated_weekly_matchday_income(game, team);
-    let weekly_recurring_income = weekly_sponsor_income + weekly_matchday_income;
+    let weekly_merchandise_income =
+        weekly_merchandise_income(team, current_position, team_fan_approval(game, team_id));
+    let weekly_recurring_income =
+        weekly_sponsor_income + weekly_matchday_income + weekly_merchandise_income;
     let projected_weekly_net = weekly_recurring_income - weekly_wage_spend;
     let cash_runway_weeks = calc_cash_runway_weeks(team.finance, projected_weekly_net);
     let wage_budget_usage_percent = ((annual_wage_bill * 100) / std::cmp::max(1, team.wage_budget))
@@ -275,6 +322,7 @@ pub fn team_finance_snapshot(game: &Game, team_id: &str) -> Option<TeamFinanceSn
         weekly_wage_budget,
         weekly_recurring_income,
         weekly_sponsor_income,
+        weekly_merchandise_income,
         projected_weekly_net,
         cash_runway_weeks,
         wage_budget_usage_percent,
@@ -876,6 +924,7 @@ fn count_recent_home_matches(game: &Game, team_id: &str) -> i64 {
 /// Process weekly financial operations (called every Monday = weekday 0).
 /// - Deduct player wages (weekly = annual / 52)
 /// - Deduct staff wages
+/// - Add merchandise sales income for every club
 /// - Add matchday revenue for home matches played that week
 /// - Check financial health and generate warnings
 pub fn process_weekly_finances(game: &mut Game) {
@@ -885,6 +934,8 @@ pub fn process_weekly_finances(game: &mut Game) {
     }
 
     let today = game.clock.current_date.format("%Y-%m-%d").to_string();
+    let user_team_id = game.manager.team_id.clone();
+    let user_fan_approval = game.manager.fan_approval;
     let team_expenses: Vec<(String, i64)> = game
         .teams
         .iter()
@@ -935,6 +986,24 @@ pub fn process_weekly_finances(game: &mut Game) {
             if sponsorship.remaining_weeks == 0 {
                 team.sponsorship = None;
             }
+        }
+
+        let is_user_team = user_team_id.as_deref() == Some(team.id.as_str());
+        let fan_approval = if is_user_team {
+            user_fan_approval
+        } else {
+            MERCHANDISE_NEUTRAL_FAN_APPROVAL
+        };
+        let merchandise_income = weekly_merchandise_income(team, current_position, fan_approval);
+        team.finance += merchandise_income;
+        team.season_income += merchandise_income;
+        if is_user_team {
+            team.financial_ledger.push(FinancialTransaction {
+                date: today.clone(),
+                description: merchandise_income_description(),
+                amount: merchandise_income,
+                kind: FinancialTransactionKind::Merchandise,
+            });
         }
     }
 
@@ -1137,13 +1206,13 @@ fn format_money(amount: u64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::preview_sponsor_pitch;
+    use super::{preview_sponsor_pitch, process_weekly_finances, weekly_merchandise_income};
     use crate::clock::GameClock;
     use crate::game::Game;
     use chrono::{TimeZone, Utc};
     use domain::league::League;
     use domain::manager::Manager;
-    use domain::team::Team;
+    use domain::team::{FinancialTransactionKind, Team};
 
     fn make_team(id: &str, name: &str) -> Team {
         let mut team = Team::new(
@@ -1217,6 +1286,84 @@ mod tests {
         assert!(
             leader_pitch.weekly_amount > trailing_pitch.weekly_amount,
             "A stronger league position should improve sponsor pitch value when other club factors are equal"
+        );
+    }
+
+    #[test]
+    fn weekly_merchandise_income_scales_with_fan_approval() {
+        let team = make_team("team1", "Alpha FC");
+
+        let low_approval = weekly_merchandise_income(&team, None, 20);
+        let high_approval = weekly_merchandise_income(&team, None, 90);
+
+        assert!(
+            high_approval > low_approval,
+            "Happier fans should buy more merchandise"
+        );
+    }
+
+    #[test]
+    fn weekly_merchandise_income_scales_with_reputation_position_and_form() {
+        let mut small_club = make_team("team1", "Alpha FC");
+        small_club.reputation = 200;
+        let mut big_club = make_team("team2", "Betas FC");
+        big_club.reputation = 900;
+
+        assert!(
+            weekly_merchandise_income(&big_club, None, 50)
+                > weekly_merchandise_income(&small_club, None, 50),
+            "Reputation should drive merchandise income"
+        );
+        assert!(
+            weekly_merchandise_income(&small_club, Some(1), 50)
+                > weekly_merchandise_income(&small_club, Some(12), 50),
+            "Leading the league should drive merchandise income"
+        );
+
+        let mut in_form_club = small_club.clone();
+        in_form_club.form = vec!["W".to_string(), "W".to_string(), "W".to_string()];
+        assert!(
+            weekly_merchandise_income(&in_form_club, None, 50)
+                > weekly_merchandise_income(&small_club, None, 50),
+            "A winning run should drive merchandise income"
+        );
+    }
+
+    #[test]
+    fn weekly_merchandise_income_is_clamped_to_a_floor() {
+        let mut team = make_team("team1", "Alpha FC");
+        team.reputation = 0;
+
+        assert_eq!(weekly_merchandise_income(&team, None, 0), 500);
+    }
+
+    #[test]
+    fn process_weekly_finances_pays_merchandise_income_to_all_clubs() {
+        let mut game = make_game();
+        game.teams[0].finance = 1_000_000;
+        game.teams[1].finance = 1_000_000;
+        let user_position = Some(1);
+        let rival_position = Some(2);
+        let user_income =
+            weekly_merchandise_income(&game.teams[0], user_position, game.manager.fan_approval);
+        let rival_income = weekly_merchandise_income(&game.teams[1], rival_position, 50);
+
+        process_weekly_finances(&mut game);
+
+        assert_eq!(game.teams[0].finance, 1_000_000 + user_income);
+        assert_eq!(game.teams[1].finance, 1_000_000 + rival_income);
+        let user_ledger_entry = game.teams[0]
+            .financial_ledger
+            .iter()
+            .find(|entry| entry.kind == FinancialTransactionKind::Merchandise)
+            .expect("merchandise ledger entry for the user club");
+        assert_eq!(user_ledger_entry.amount, user_income);
+        assert!(
+            !game.teams[1]
+                .financial_ledger
+                .iter()
+                .any(|entry| entry.kind == FinancialTransactionKind::Merchandise),
+            "AI clubs should not accumulate weekly ledger entries"
         );
     }
 }

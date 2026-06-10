@@ -81,6 +81,18 @@ Run the development desktop app:
 npm run tauri dev
 ```
 
+### Browser version
+
+OpenFootManager can also run in a web browser via a small Rust HTTP server that
+reuses the exact same game core. All desktop commands — including interactive
+live matches, transfers, contracts, season rollover and stats — are supported;
+see [docs/WEB.md](docs/WEB.md) for architecture and details.
+
+```bash
+npm run build:web     # build the browser bundle into dist/
+npm run server:web    # serve dist/ + API at http://localhost:8080
+```
+
 ## CONTRIBUTING
 
 Contributions are welcome. For full guidelines, read [CONTRIBUTING](CONTRIBUTING.md).

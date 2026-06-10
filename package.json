@@ -8,6 +8,11 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
+    "dev:web": "vite --config vite.web.config.ts",
+    "build:web": "tsc && vite build --config vite.web.config.ts",
+    "preview:web": "vite preview --config vite.web.config.ts",
+    "server:web": "cargo run --manifest-path src-tauri/Cargo.toml -p ofm_server",
+    "test:web:smoke": "node scripts/smoke-web.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "tauri": "tauri"

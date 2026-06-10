@@ -612,6 +612,38 @@ describe("PostMatchScreen", function (): void {
     expect(screen.getByText("Close")).toBeInTheDocument();
   });
 
+  it("renders a generated match summary paragraph at full time", function (): void {
+    render(
+      <ThemeProvider>
+        <PostMatchScreen
+          snapshot={makeSnapshot()}
+          gameState={makeGameState()}
+          currentFixture={{
+            id: "fixture-1",
+            matchday: 4,
+            date: "2026-08-01",
+            home_team_id: "team1",
+            away_team_id: "team2",
+            competition: "League",
+            status: "Completed",
+            result: null,
+          }}
+          userSide="Home"
+          isSpectator={false}
+          importantEvents={[]}
+          roundSummary={null}
+          onPressConference={() => { }}
+          onFinish={() => { }}
+        />
+      </ThemeProvider>,
+    );
+
+    // The snapshot is a 2-1 home win with no recorded events, so the summary
+    // resolves to a narrow-win template from the deterministic generator.
+    const summary = screen.getByTestId("match-summary");
+    expect(summary.textContent).toMatch(/match\.summary\.narrowWin\.[01]/);
+  });
+
   it("renders a friendly empty state when the round summary is null", function (): void {
     render(
       <ThemeProvider>

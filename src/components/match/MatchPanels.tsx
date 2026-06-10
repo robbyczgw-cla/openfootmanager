@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { MatchSnapshot, MatchEvent, EnginePlayerData } from "./types";
 import { getEventDisplay, getEventTypeLabel, getPlayerName } from "./helpers";
+import { getEventCommentary } from "../../lib/commentary";
 import { Badge } from "../ui";
 import { translatePositionAbbreviation } from "../squad/SquadTab.helpers";
 
@@ -14,6 +15,12 @@ export function EventFeed({
   feedRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const { t } = useTranslation();
+  const commentaryTeams = {
+    homeName: snapshot.home_team.name,
+    awayName: snapshot.away_team.name,
+  };
+  const resolveCommentaryName = (playerId: string | null) =>
+    getPlayerName(snapshot, playerId);
   return (
     <div ref={feedRef} className="flex flex-col gap-1">
       {events.length === 0 ? (
@@ -26,6 +33,12 @@ export function EventFeed({
         events.map((evt, i) => {
           const display = getEventDisplay(evt);
           const isHome = evt.side === "Home";
+          const commentary = getEventCommentary(
+            events,
+            i,
+            commentaryTeams,
+            resolveCommentaryName,
+          );
           return (
             <div
               key={i}
@@ -58,6 +71,11 @@ export function EventFeed({
                             : ""}
                       </span>
                     )}
+                  </p>
+                )}
+                {commentary && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 italic mt-0.5">
+                    {t(commentary.key, commentary.params)}
                   </p>
                 )}
               </div>

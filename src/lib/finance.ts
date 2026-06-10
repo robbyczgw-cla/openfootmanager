@@ -7,6 +7,8 @@ export interface TeamFinanceSnapshot {
   weeklyWageSpend: number;
   weeklyWageBudget: number;
   weeklySponsorIncome: number;
+  weeklyMerchandiseIncome: number;
+  weeklyLoanRepayment: number;
   projectedWeeklyNet: number;
   cashRunwayWeeks: number | null;
   wageBudgetUsagePercent: number;
@@ -17,6 +19,11 @@ export interface TeamFinanceSnapshot {
 }
 
 const MARKETING_CAMPAIGN_COOLDOWN_DAYS = 28;
+const MERCHANDISE_MIN_WEEKLY_INCOME = 500;
+const MERCHANDISE_MAX_WEEKLY_INCOME = 75000;
+const MERCHANDISE_REPUTATION_MULTIPLIER = 6;
+const MERCHANDISE_WIN_FORM_BONUS = 400;
+const MERCHANDISE_NEUTRAL_FAN_APPROVAL = 50;
 
 const HEALTH_PRIORITY: Record<FinanceHealthLevel, number> = {
   stable: 0,
@@ -45,6 +52,37 @@ export function getWeeklyWageSpend(
   return [...players, ...staff].reduce((sum, person) => {
     return sum + annualAmountToWeeklyCommitment(person.wage);
   }, 0);
+}
+
+export function getWeeklyMerchandiseIncome(
+  team: TeamData,
+  fanApproval: number = MERCHANDISE_NEUTRAL_FAN_APPROVAL,
+): number {
+  const reputationComponent =
+    Math.max(0, team.reputation) * MERCHANDISE_REPUTATION_MULTIPLIER;
+  const formComponent =
+    team.form.filter((result) => result === "W").length
+    * MERCHANDISE_WIN_FORM_BONUS;
+  const fanMultiplier = 50 + Math.min(100, Math.max(0, fanApproval));
+  const scaled = Math.floor(
+    ((reputationComponent + formComponent) * fanMultiplier) / 100,
+  );
+
+  return Math.min(
+    MERCHANDISE_MAX_WEEKLY_INCOME,
+    Math.max(MERCHANDISE_MIN_WEEKLY_INCOME, scaled),
+  );
+}
+
+export function getWeeklyLoanRepayment(team: TeamData): number {
+  if (!team.bank_loan) {
+    return 0;
+  }
+
+  return Math.min(
+    team.bank_loan.weekly_repayment,
+    team.bank_loan.remaining_balance,
+  );
 }
 
 export function getCashRunwayWeeks(
@@ -151,12 +189,22 @@ export function getTeamFinanceSnapshot(
   players: PlayerData[],
   staff: StaffData[] = [],
   currentDate?: string,
+  fanApproval: number = MERCHANDISE_NEUTRAL_FAN_APPROVAL,
 ): TeamFinanceSnapshot {
   const annualWageBill = getAnnualWageBill(players, staff);
   const weeklyWageSpend = getWeeklyWageSpend(players, staff);
   const weeklyWageBudget = annualAmountToWeeklyCommitment(team.wage_budget);
   const weeklySponsorIncome = team.sponsorship?.base_value ?? 0;
-  const projectedWeeklyNet = weeklySponsorIncome - weeklyWageSpend;
+  const weeklyMerchandiseIncome = getWeeklyMerchandiseIncome(
+    team,
+    fanApproval,
+  );
+  const weeklyLoanRepayment = getWeeklyLoanRepayment(team);
+  const projectedWeeklyNet =
+    weeklySponsorIncome
+    + weeklyMerchandiseIncome
+    - weeklyWageSpend
+    - weeklyLoanRepayment;
   const cashRunwayWeeks = getCashRunwayWeeks(team.finance, projectedWeeklyNet);
   const wageBudgetUsagePercent = Math.round(
     (annualWageBill / Math.max(1, team.wage_budget)) * 100,
@@ -169,6 +217,8 @@ export function getTeamFinanceSnapshot(
     weeklyWageSpend,
     weeklyWageBudget,
     weeklySponsorIncome,
+    weeklyMerchandiseIncome,
+    weeklyLoanRepayment,
     projectedWeeklyNet,
     cashRunwayWeeks,
     wageBudgetUsagePercent,

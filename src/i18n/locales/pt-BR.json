@@ -782,6 +782,7 @@
     "cashFlow": "Fluxo de caixa",
     "weeklyWageSpend": "Gasto salarial semanal",
     "weeklySponsorIncome": "Receita semanal de patrocínio",
+    "weeklyMerchandiseIncome": "Receita semanal de merchandising",
     "projectedWeeklyNet": "Líquido semanal projetado",
     "cashRunway": "Autonomia financeira",
     "runwayWeeks": "{{count}} semanas no ritmo atual",
@@ -791,6 +792,20 @@
     "requestBoardSupport": "Solicitar apoio",
     "boardSupportUnavailable": "O apoio da diretoria é reservado para clubes endividados ou perto de uma crise de caixa.",
     "boardSupportSummary": "A diretoria aprovou {{amount}} em financiamento de emergência. O orçamento de transferências cai {{transferBudgetReduction}} e a confiança recua {{satisfactionPenalty}}.",
+    "bankLoan": "Empréstimo bancário",
+    "requestLoan": "Solicitar empréstimo",
+    "activeLoan": "Empréstimo ativo",
+    "bankLoanDescription": "Pegue uma injeção imediata de dinheiro com o banco, paga em parcelas semanais com juros.",
+    "takeLoan": "Contratar empréstimo",
+    "repayLoanEarly": "Quitar antecipadamente",
+    "loanOfferSummary": "O banco oferece {{principal}} com {{interestRate}}% de juros, pagos em {{weeklyRepayment}} por semana durante {{weeks}} semanas ({{totalRepayment}} no total).",
+    "loanApprovedSummary": "Empréstimo aprovado: {{principal}} recebidos. Pagando {{weeklyRepayment}} por semana durante {{weeks}} semanas com {{interestRate}}% de juros.",
+    "loanRepaidSummary": "Empréstimo quitado com um pagamento final de {{amount}}.",
+    "loanRemainingBalance": "Saldo devedor: {{amount}}",
+    "loanWeeklyRepayment": "Parcela semanal: {{amount}}",
+    "loanRemainingWeeks": "{{count}} semanas restantes",
+    "loanUnavailable": "O banco não está oferecendo condições que o clube possa bancar no momento.",
+    "loanRepayInsufficientFunds": "Fundos insuficientes para quitar o saldo devedor.",
     "wagePressure": "Pressão salarial",
     "wageBudgetUsed": "{{percent}}% do orçamento salarial usado",
     "contractRisk": "Risco contratual",
@@ -1845,6 +1860,11 @@
         "sponsorPitchActiveSponsor": "Já existe um acordo de patrocínio ativo.",
         "marketingCampaignUnavailable": "Campanhas de marketing só estão disponíveis quando o clube está sob pressão salarial ou de caixa.",
         "marketingCampaignCoolingDown": "O time comercial precisa de tempo antes de lançar outra campanha de marketing.",
+        "loanAlreadyActive": "O clube já tem um empréstimo bancário ativo.",
+        "loanAlreadyRequestedToday": "O banco já processou um pedido de empréstimo hoje.",
+        "loanUnaffordable": "O banco recusou o empréstimo: o clube não conseguiria arcar com as parcelas.",
+        "loanNotActive": "Não há empréstimo bancário ativo para quitar.",
+        "loanRepaymentInsufficientFunds": "Fundos insuficientes para quitar o saldo devedor do empréstimo.",
         "facilityUpgradeInsufficientFunds": "Fundos insuficientes para esta melhoria de instalações. São necessários {{amount}}.",
         "facilityUpgradeOverBudget": "As melhorias de instalações ficam bloqueadas enquanto o clube estiver acima do orçamento salarial.",
         "facilityUpgradeCritical": "As melhorias de instalações ficam bloqueadas enquanto o clube estiver sob forte pressão financeira."
@@ -2022,6 +2042,14 @@
       "marketingCampaign": {
         "subject": "Relatório da campanha de marketing",
         "body": "A ação comercial terminou com vendas brutas de {{grossRevenue}}. Depois de {{campaignCost}} em custos de campanha, o clube fica com {{netIncome}} de nova receita.\n\nO time comercial vai precisar de {{days}} dias antes de lançar outra campanha."
+      },
+      "bankLoanApproved": {
+        "subject": "Empréstimo bancário aprovado",
+        "body": "O banco aprovou um empréstimo de {{principal}} com {{interestRate}}% de juros.\n\nO valor total foi creditado na conta do clube. Parcelas semanais de {{weeklyRepayment}} serão cobradas nas próximas {{weeks}} semanas."
+      },
+      "bankLoanRepaid": {
+        "subject": "Empréstimo bancário totalmente quitado",
+        "body": "O clube quitou totalmente seu empréstimo bancário de {{principal}}, pagando {{totalPaid}} no total, incluindo juros.\n\nNão há mais parcelas pendentes."
       },
       "seasonPayout": {
         "subject": "Temporada {{season}} — Premiação concedida",

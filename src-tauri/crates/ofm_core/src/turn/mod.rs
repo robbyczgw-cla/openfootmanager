@@ -227,12 +227,17 @@ mod tests {
             vec![],
         );
         let initial_finance = game.teams[0].finance;
+        let merchandise_income = crate::finances::weekly_merchandise_income(
+            &game.teams[0],
+            None,
+            game.manager.fan_approval,
+        );
 
         finish_live_match_day(&mut game);
 
         assert_eq!(
             game.teams[0].finance,
-            initial_finance - ((52_000 + 10_400) / 52)
+            initial_finance - ((52_000 + 10_400) / 52) + merchandise_income
         );
     }
 }

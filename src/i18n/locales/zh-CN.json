@@ -782,6 +782,7 @@
     "cashFlow": "现金流",
     "weeklyWageSpend": "每周工资支出",
     "weeklySponsorIncome": "每周赞助收入",
+    "weeklyMerchandiseIncome": "每周周边商品收入",
     "projectedWeeklyNet": "预计每周净收益",
     "cashRunway": "现金续航",
     "runwayWeeks": "按当前节奏可维持 {{count}} 周",
@@ -791,6 +792,20 @@
     "requestBoardSupport": "申请支持",
     "boardSupportUnavailable": "董事会支持仅提供给负债或接近现金危机的俱乐部。",
     "boardSupportSummary": "董事会批准了 {{amount}} 的紧急资金。转会预算减少 {{transferBudgetReduction}}，董事会信任下降 {{satisfactionPenalty}}。",
+    "bankLoan": "银行贷款",
+    "requestLoan": "申请贷款",
+    "activeLoan": "当前贷款",
+    "bankLoanDescription": "向银行借入一笔即时资金，按周分期连本带息偿还。",
+    "takeLoan": "贷款",
+    "repayLoanEarly": "提前还清",
+    "loanOfferSummary": "银行可提供 {{principal}}，利率 {{interestRate}}%，每周偿还 {{weeklyRepayment}}，共 {{weeks}} 周（总计 {{totalRepayment}}）。",
+    "loanApprovedSummary": "贷款已批准：已收到 {{principal}}。将以每周 {{weeklyRepayment}} 偿还 {{weeks}} 周，利率 {{interestRate}}%。",
+    "loanRepaidSummary": "已用 {{amount}} 的最后一笔付款结清贷款。",
+    "loanRemainingBalance": "剩余欠款：{{amount}}",
+    "loanWeeklyRepayment": "每周还款：{{amount}}",
+    "loanRemainingWeeks": "剩余 {{count}} 周",
+    "loanUnavailable": "银行目前没有提供俱乐部能负担的贷款条件。",
+    "loanRepayInsufficientFunds": "资金不足，无法结清剩余欠款。",
     "wagePressure": "工资压力",
     "wageBudgetUsed": "已使用工资预算 {{percent}}%",
     "contractRisk": "合同风险",
@@ -1845,6 +1860,11 @@
         "sponsorPitchActiveSponsor": "当前已经有生效中的赞助协议。",
         "marketingCampaignUnavailable": "只有当俱乐部面临工资或现金压力时，才能发起营销活动。",
         "marketingCampaignCoolingDown": "商务团队在再次发起营销活动前还需要一些时间。",
+        "loanAlreadyActive": "俱乐部已有一笔进行中的银行贷款。",
+        "loanAlreadyRequestedToday": "银行今天已处理过一次贷款申请。",
+        "loanUnaffordable": "银行拒绝了贷款：俱乐部无法负担还款。",
+        "loanNotActive": "没有可偿还的银行贷款。",
+        "loanRepaymentInsufficientFunds": "资金不足，无法结清贷款剩余欠款。",
         "facilityUpgradeInsufficientFunds": "资金不足，无法升级该设施。需要 {{amount}}。",
         "facilityUpgradeOverBudget": "当俱乐部超出工资预算时，设施升级会被禁止。",
         "facilityUpgradeCritical": "当俱乐部面临严重财务压力时，设施升级会被禁止。"
@@ -2019,6 +2039,14 @@
       "marketingCampaign": {
         "subject": "营销活动报告",
         "body": "本次商业推广已完成，毛销售额为 {{grossRevenue}}。扣除 {{campaignCost}} 的活动成本后，俱乐部新增 {{netIncome}} 收入。\n\n商务团队还需要等待 {{days}} 天才能再次发起活动。"
+      },
+      "bankLoanApproved": {
+        "subject": "银行贷款已批准",
+        "body": "银行已批准一笔 {{principal}} 的贷款，利率 {{interestRate}}%。\n\n全部款项已存入俱乐部账户。未来 {{weeks}} 周内将每周扣除 {{weeklyRepayment}} 的还款。"
+      },
+      "bankLoanRepaid": {
+        "subject": "银行贷款已全部还清",
+        "body": "俱乐部已全部还清 {{principal}} 的银行贷款，连本带息共支付 {{totalPaid}}。\n\n无需再支付任何款项。"
       },
       "seasonPayout": {
         "subject": "{{season}}赛季奖金发放",

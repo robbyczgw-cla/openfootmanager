@@ -782,6 +782,7 @@
     "cashFlow": "Flux de trésorerie",
     "weeklyWageSpend": "Dépenses salariales hebdomadaires",
     "weeklySponsorIncome": "Revenus hebdomadaires de sponsoring",
+    "weeklyMerchandiseIncome": "Revenus hebdomadaires du merchandising",
     "projectedWeeklyNet": "Net hebdomadaire projeté",
     "cashRunway": "Autonomie de trésorerie",
     "runwayWeeks": "{{count}} semaines au rythme actuel",
@@ -791,6 +792,20 @@
     "requestBoardSupport": "Demander un soutien",
     "boardSupportUnavailable": "Le soutien du conseil est réservé aux clubs endettés ou proches d'une crise de trésorerie.",
     "boardSupportSummary": "Le conseil a accordé {{amount}} de financement d'urgence. Le budget transferts baisse de {{transferBudgetReduction}} et la confiance du conseil recule de {{satisfactionPenalty}}.",
+    "bankLoan": "Prêt bancaire",
+    "requestLoan": "Demander un prêt",
+    "activeLoan": "Prêt en cours",
+    "bankLoanDescription": "Empruntez une injection immédiate de liquidités à la banque, remboursée par échéances hebdomadaires avec intérêts.",
+    "takeLoan": "Contracter le prêt",
+    "repayLoanEarly": "Rembourser par anticipation",
+    "loanOfferSummary": "La banque propose {{principal}} à {{interestRate}}% d'intérêts, remboursés à raison de {{weeklyRepayment}} par semaine pendant {{weeks}} semaines ({{totalRepayment}} au total).",
+    "loanApprovedSummary": "Prêt approuvé : {{principal}} reçus. Remboursement de {{weeklyRepayment}} par semaine pendant {{weeks}} semaines à {{interestRate}}% d'intérêts.",
+    "loanRepaidSummary": "Prêt soldé avec un paiement final de {{amount}}.",
+    "loanRemainingBalance": "Solde restant : {{amount}}",
+    "loanWeeklyRepayment": "Échéance hebdomadaire : {{amount}}",
+    "loanRemainingWeeks": "{{count}} semaines restantes",
+    "loanUnavailable": "La banque ne propose pas actuellement de conditions que le club puisse assumer.",
+    "loanRepayInsufficientFunds": "Fonds insuffisants pour solder le montant restant.",
     "wagePressure": "Pression salariale",
     "wageBudgetUsed": "{{percent}}% du budget salarial utilisé",
     "contractRisk": "Risque contractuel",
@@ -1845,6 +1860,11 @@
         "sponsorPitchActiveSponsor": "Un contrat de sponsoring est déjà en cours.",
         "marketingCampaignUnavailable": "Les campagnes marketing ne sont disponibles que lorsque le club subit une pression salariale ou de trésorerie.",
         "marketingCampaignCoolingDown": "L'équipe commerciale a besoin de temps avant de relancer une autre campagne marketing.",
+        "loanAlreadyActive": "Le club a déjà un prêt bancaire en cours.",
+        "loanAlreadyRequestedToday": "La banque a déjà traité une demande de prêt aujourd'hui.",
+        "loanUnaffordable": "La banque a refusé le prêt : le club ne pourrait pas assumer les échéances.",
+        "loanNotActive": "Aucun prêt bancaire en cours à rembourser.",
+        "loanRepaymentInsufficientFunds": "Fonds insuffisants pour solder le montant restant du prêt.",
         "facilityUpgradeInsufficientFunds": "Fonds insuffisants pour cette amélioration d'installation. Il faut {{amount}}.",
         "facilityUpgradeOverBudget": "Les améliorations d'installations sont bloquées tant que le club dépasse son budget salarial.",
         "facilityUpgradeCritical": "Les améliorations d'installations sont bloquées tant que le club subit une forte pression financière."
@@ -2022,6 +2042,14 @@
       "marketingCampaign": {
         "subject": "Rapport de campagne marketing",
         "body": "L'opération commerciale est terminée avec {{grossRevenue}} de ventes brutes. Après {{campaignCost}} de coûts de campagne, le club encaisse {{netIncome}} de revenus supplémentaires.\n\nL'équipe commerciale devra attendre {{days}} jours avant de lancer une nouvelle campagne."
+      },
+      "bankLoanApproved": {
+        "subject": "Prêt bancaire approuvé",
+        "body": "La banque a approuvé un prêt de {{principal}} à {{interestRate}}% d'intérêts.\n\nLe montant total a été crédité sur le compte du club. Des échéances de {{weeklyRepayment}} seront prélevées chaque semaine pendant les {{weeks}} prochaines semaines."
+      },
+      "bankLoanRepaid": {
+        "subject": "Prêt bancaire intégralement remboursé",
+        "body": "Le club a intégralement remboursé son prêt bancaire de {{principal}}, en payant {{totalPaid}} au total, intérêts compris.\n\nAucune échéance n'est plus due."
       },
       "seasonPayout": {
         "subject": "Saison {{season}} — Prime attribuée",

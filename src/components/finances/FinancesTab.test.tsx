@@ -59,6 +59,31 @@ vi.mock("react-i18next", () => ({
       if (key === "finances.weeklyWageSpend") return "Weekly Wage Spend";
       if (key === "finances.weeklySponsorIncome")
         return "Weekly Sponsor Income";
+      if (key === "finances.weeklyMerchandiseIncome")
+        return "Weekly Merchandise Income";
+      if (key === "finances.bankLoan") return "Bank Loan";
+      if (key === "finances.requestLoan") return "Request Loan";
+      if (key === "finances.activeLoan") return "Active Loan";
+      if (key === "finances.bankLoanDescription")
+        return "Borrow an upfront cash injection from the bank.";
+      if (key === "finances.takeLoan") return "Take Loan";
+      if (key === "finances.repayLoanEarly") return "Repay Early";
+      if (key === "finances.loanOfferSummary")
+        return `Bank offers ${params?.principal} at ${params?.interestRate}% repaid at ${params?.weeklyRepayment}/week over ${params?.weeks} weeks (${params?.totalRepayment} total)`;
+      if (key === "finances.loanApprovedSummary")
+        return `Loan approved: ${params?.principal} received, repaying ${params?.weeklyRepayment}/week over ${params?.weeks} weeks at ${params?.interestRate}%`;
+      if (key === "finances.loanRepaidSummary")
+        return `Loan settled with a final payment of ${params?.amount}`;
+      if (key === "finances.loanRemainingBalance")
+        return `Remaining balance: ${params?.amount}`;
+      if (key === "finances.loanWeeklyRepayment")
+        return `Weekly repayment: ${params?.amount}`;
+      if (key === "finances.loanRemainingWeeks")
+        return `${params?.count} weeks remaining on the loan`;
+      if (key === "finances.loanUnavailable")
+        return "The bank is not offering affordable terms right now.";
+      if (key === "finances.loanRepayInsufficientFunds")
+        return "Insufficient funds to settle the remaining balance.";
       if (key === "finances.projectedWeeklyNet") return "Projected Weekly Net";
       if (key === "finances.cashRunway") return "Cash Runway";
       if (key === "finances.runwayWeeks")
@@ -506,6 +531,8 @@ describe("FinancesTab facilities", () => {
             weekly_wage_budget: 962,
             weekly_recurring_income: 0,
             weekly_sponsor_income: 0,
+            weekly_merchandise_income: 500,
+            weekly_loan_repayment: 0,
             projected_weekly_net: -100000,
             cash_runway_weeks: 9,
             wage_budget_usage_percent: 10400,
@@ -572,6 +599,8 @@ describe("FinancesTab facilities", () => {
             weekly_wage_budget: 962,
             weekly_recurring_income: 0,
             weekly_sponsor_income: 0,
+            weekly_merchandise_income: 500,
+            weekly_loan_repayment: 0,
             projected_weekly_net: -100000,
             cash_runway_weeks: 3,
             wage_budget_usage_percent: 10400,
@@ -637,6 +666,8 @@ describe("FinancesTab facilities", () => {
             weekly_wage_budget: 962,
             weekly_recurring_income: 0,
             weekly_sponsor_income: 0,
+            weekly_merchandise_income: 500,
+            weekly_loan_repayment: 0,
             projected_weekly_net: -100000,
             cash_runway_weeks: 3,
             wage_budget_usage_percent: 10400,
@@ -709,6 +740,8 @@ describe("FinancesTab facilities", () => {
             weekly_wage_budget: 962,
             weekly_recurring_income: 0,
             weekly_sponsor_income: 0,
+            weekly_merchandise_income: 500,
+            weekly_loan_repayment: 0,
             projected_weekly_net: -100000,
             cash_runway_weeks: 3,
             wage_budget_usage_percent: 10400,
@@ -750,6 +783,8 @@ describe("FinancesTab facilities", () => {
             weekly_wage_budget: 38461,
             weekly_recurring_income: 0,
             weekly_sponsor_income: 0,
+            weekly_merchandise_income: 500,
+            weekly_loan_repayment: 0,
             projected_weekly_net: -1700,
             cash_runway_weeks: 8,
             wage_budget_usage_percent: 4,
@@ -854,6 +889,230 @@ describe("FinancesTab facilities", () => {
     expect(onSelectPlayer).toHaveBeenCalledWith("player-critical", {
       openRenewal: true,
     });
+  });
+
+  it("takes a bank loan when the bank offers affordable terms", async () => {
+    const initialState = createGameState();
+    const updatedState = createGameState({
+      finance: 1425000,
+      bank_loan: {
+        principal: 525000,
+        remaining_balance: 556500,
+        weekly_repayment: 21404,
+        remaining_weeks: 26,
+        interest_rate_percent: 6,
+        start_date: "2025-01-20",
+      },
+    });
+    const onGameUpdate = vi.fn();
+
+    mockedInvoke.mockImplementation((command) => {
+      if (command === "get_finance_snapshot") {
+        return Promise.resolve({
+          snapshot: {
+            annual_wage_bill: 52000,
+            weekly_wage_spend: 1000,
+            weekly_wage_budget: 961,
+            weekly_recurring_income: 500,
+            weekly_sponsor_income: 0,
+            weekly_merchandise_income: 500,
+            weekly_loan_repayment: 0,
+            projected_weekly_net: -500,
+            cash_runway_weeks: null,
+            wage_budget_usage_percent: 104,
+            currently_in_debt: false,
+            currently_over_budget: true,
+            wage_budget_status: "warning",
+            runway_status: "stable",
+            overall_status: "warning",
+            marketing_campaign_cooldown_days_remaining: 0,
+          },
+          previews: {
+            bank_loan: {
+              principal: 525000,
+              interest_rate_percent: 6,
+              term_weeks: 26,
+              weekly_repayment: 21404,
+              total_repayment: 556500,
+            },
+          },
+        });
+      }
+
+      if (command === "request_bank_loan") {
+        return Promise.resolve({
+          game: updatedState,
+          result: {
+            message_id: "bank_loan_approved_2025-01-20",
+            principal: 525000,
+            interest_rate_percent: 6,
+            term_weeks: 26,
+            weekly_repayment: 21404,
+            total_repayment: 556500,
+          },
+        });
+      }
+
+      return Promise.reject(new Error(`Unexpected command: ${command}`));
+    });
+
+    render(
+      <FinancesTab gameState={initialState} onGameUpdate={onGameUpdate} />,
+    );
+
+    expect(screen.getByText("Bank Loan")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Bank offers €525,000 at 6% repaid at €21,404/week over 26 weeks (€556,500 total)",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Take Loan" }));
+
+    await waitFor(() => {
+      expect(mockedInvoke).toHaveBeenCalledWith("request_bank_loan");
+    });
+
+    expect(onGameUpdate).toHaveBeenCalledWith(updatedState);
+    expect(
+      screen.getByText(
+        "Loan approved: €525,000 received, repaying €21,404/week over 26 weeks at 6%",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("disables the loan request while the bank offers no affordable terms", async () => {
+    const gameState = createGameState();
+
+    mockedInvoke.mockImplementation((command) => {
+      if (command === "get_finance_snapshot") {
+        return Promise.resolve({
+          snapshot: {
+            annual_wage_bill: 52000,
+            weekly_wage_spend: 1000,
+            weekly_wage_budget: 961,
+            weekly_recurring_income: 500,
+            weekly_sponsor_income: 0,
+            weekly_merchandise_income: 500,
+            weekly_loan_repayment: 0,
+            projected_weekly_net: -500,
+            cash_runway_weeks: 4,
+            wage_budget_usage_percent: 104,
+            currently_in_debt: true,
+            currently_over_budget: true,
+            wage_budget_status: "critical",
+            runway_status: "critical",
+            overall_status: "critical",
+            marketing_campaign_cooldown_days_remaining: 0,
+          },
+          previews: {},
+        });
+      }
+
+      return Promise.reject(new Error(`Unexpected command: ${command}`));
+    });
+
+    render(<FinancesTab gameState={gameState} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Take Loan" })).toBeDisabled();
+    });
+
+    expect(
+      screen.getByText("The bank is not offering affordable terms right now."),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the active loan and settles it early", async () => {
+    const initialState = createGameState({
+      finance: 900000,
+      bank_loan: {
+        principal: 525000,
+        remaining_balance: 320000,
+        weekly_repayment: 21404,
+        remaining_weeks: 15,
+        interest_rate_percent: 6,
+        start_date: "2025-01-20",
+      },
+    });
+    const updatedState = createGameState({ finance: 580000 });
+    const onGameUpdate = vi.fn();
+
+    mockedInvoke.mockImplementation((command) => {
+      if (command === "get_finance_snapshot") {
+        return pendingPromise();
+      }
+
+      if (command === "repay_bank_loan") {
+        return Promise.resolve({
+          game: updatedState,
+          result: {
+            message_id: "bank_loan_repaid_2025-01-20",
+            amount_paid: 320000,
+          },
+        });
+      }
+
+      return Promise.reject(new Error(`Unexpected command: ${command}`));
+    });
+
+    render(
+      <FinancesTab gameState={initialState} onGameUpdate={onGameUpdate} />,
+    );
+
+    expect(screen.getByText("Active Loan")).toBeInTheDocument();
+    expect(
+      screen.getByText("Remaining balance: €320,000"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Weekly repayment: €21,404")).toBeInTheDocument();
+    expect(
+      screen.getByText("15 weeks remaining on the loan"),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Repay Early" }));
+
+    await waitFor(() => {
+      expect(mockedInvoke).toHaveBeenCalledWith("repay_bank_loan");
+    });
+
+    expect(onGameUpdate).toHaveBeenCalledWith(updatedState);
+    expect(
+      screen.getByText("Loan settled with a final payment of €320,000"),
+    ).toBeInTheDocument();
+  });
+
+  it("blocks early repayment when the club cannot cover the balance", () => {
+    const gameState = createGameState({
+      finance: 100000,
+      bank_loan: {
+        principal: 525000,
+        remaining_balance: 320000,
+        weekly_repayment: 21404,
+        remaining_weeks: 15,
+        interest_rate_percent: 6,
+        start_date: "2025-01-20",
+      },
+    });
+
+    render(<FinancesTab gameState={gameState} />);
+
+    expect(screen.getByRole("button", { name: "Repay Early" })).toBeDisabled();
+    expect(
+      screen.getByText("Insufficient funds to settle the remaining balance."),
+    ).toBeInTheDocument();
+  });
+
+  it("renders weekly merchandise income in the cash-flow panel", () => {
+    const gameState = createGameState({ reputation: 700 });
+
+    render(<FinancesTab gameState={gameState} />);
+
+    expect(screen.getByText("Weekly Merchandise Income")).toBeInTheDocument();
+    // Local fallback: reputation 700 * 6 at neutral fan approval = 4,200/week.
+    expect(screen.getAllByText("€4K/wk").length).toBeGreaterThan(0);
   });
 
   it("delegates only the selected risky renewals to the assistant and publishes the updated state", async () => {

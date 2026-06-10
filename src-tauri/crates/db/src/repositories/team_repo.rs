@@ -1,6 +1,6 @@
 use domain::team::{
-    Facilities, FinancialTransaction, PlayStyle, Sponsorship, Team, TeamColors, TrainingFocus,
-    TrainingIntensity, TrainingSchedule,
+    BankLoan, Facilities, FinancialTransaction, PlayStyle, Sponsorship, Team, TeamColors,
+    TrainingFocus, TrainingIntensity, TrainingSchedule,
 };
 use rusqlite::{Connection, params};
 
@@ -23,6 +23,8 @@ pub fn upsert_team(conn: &Connection, t: &Team) -> Result<(), String> {
         .map_err(|_| GAME_PERSISTENCE_WRITE_ERROR.to_string())?;
     let sponsorship_json = serde_json::to_string(&t.sponsorship)
         .map_err(|_| GAME_PERSISTENCE_WRITE_ERROR.to_string())?;
+    let bank_loan_json = serde_json::to_string(&t.bank_loan)
+        .map_err(|_| GAME_PERSISTENCE_WRITE_ERROR.to_string())?;
     let facilities_json = serde_json::to_string(&t.facilities)
         .map_err(|_| GAME_PERSISTENCE_WRITE_ERROR.to_string())?;
     let play_style_str = format!("{:?}", t.play_style);
@@ -37,8 +39,8 @@ pub fn upsert_team(conn: &Connection, t: &Team) -> Result<(), String> {
          season_income, season_expenses, formation, play_style,
          training_focus, training_intensity, training_schedule,
          founded_year, colors_primary, colors_secondary,
-         starting_xi_ids, match_roles, form, history, training_groups, financial_ledger, sponsorship, facilities)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31)",
+         starting_xi_ids, match_roles, form, history, training_groups, financial_ledger, sponsorship, facilities, bank_loan)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28, ?29, ?30, ?31, ?32)",
         params![
             t.id,
             t.name,
@@ -71,6 +73,7 @@ pub fn upsert_team(conn: &Connection, t: &Team) -> Result<(), String> {
             financial_ledger_json,
             sponsorship_json,
             facilities_json,
+            bank_loan_json,
         ],
     )
     .map_err(|_| GAME_PERSISTENCE_WRITE_ERROR.to_string())?;
@@ -132,6 +135,7 @@ fn row_to_team(row: &rusqlite::Row) -> rusqlite::Result<Team> {
     let financial_ledger_json: String = row.get(28)?;
     let sponsorship_json: String = row.get(29)?;
     let facilities_json: String = row.get(30)?;
+    let bank_loan_json: String = row.get(31)?;
     let play_style_str: String = row.get(16)?;
     let training_focus_str: String = row.get(17)?;
     let training_intensity_str: String = row.get(18)?;
@@ -157,6 +161,7 @@ fn row_to_team(row: &rusqlite::Row) -> rusqlite::Result<Team> {
             .unwrap_or_default(),
         sponsorship: serde_json::from_str::<Option<Sponsorship>>(&sponsorship_json)
             .unwrap_or_default(),
+        bank_loan: serde_json::from_str::<Option<BankLoan>>(&bank_loan_json).unwrap_or_default(),
         facilities: serde_json::from_str::<Facilities>(&facilities_json).unwrap_or_default(),
         formation: row.get(15)?,
         play_style: parse_play_style(&play_style_str),
@@ -185,7 +190,7 @@ pub fn load_all_teams(conn: &Connection) -> Result<Vec<Team>, String> {
                     season_income, season_expenses, formation, play_style,
                     training_focus, training_intensity, training_schedule,
                     founded_year, colors_primary, colors_secondary,
-                    starting_xi_ids, match_roles, form, history, training_groups, financial_ledger, sponsorship, facilities
+                    starting_xi_ids, match_roles, form, history, training_groups, financial_ledger, sponsorship, facilities, bank_loan
              FROM teams",
         )
         .map_err(|_| GAME_PERSISTENCE_LOAD_ERROR.to_string())?;
@@ -210,7 +215,7 @@ pub fn load_team(conn: &Connection, id: &str) -> Result<Option<Team>, String> {
                     season_income, season_expenses, formation, play_style,
                     training_focus, training_intensity, training_schedule,
                     founded_year, colors_primary, colors_secondary,
-                    starting_xi_ids, match_roles, form, history, training_groups, financial_ledger, sponsorship, facilities
+                    starting_xi_ids, match_roles, form, history, training_groups, financial_ledger, sponsorship, facilities, bank_loan
              FROM teams WHERE id = ?1",
         )
         .map_err(|_| GAME_PERSISTENCE_LOAD_ERROR.to_string())?;
@@ -442,6 +447,33 @@ mod tests {
                 bonus_amount: 25_000,
             }]
         ));
+    }
+
+    #[test]
+    fn test_team_bank_loan_roundtrip() {
+        let db = test_db();
+        let mut team = sample_team("team-001", "Loan FC");
+        team.bank_loan = Some(BankLoan {
+            principal: 500_000,
+            remaining_balance: 320_000,
+            weekly_repayment: 20_385,
+            remaining_weeks: 16,
+            interest_rate_percent: 6,
+            start_date: "2026-02-16".to_string(),
+        });
+
+        upsert_team(db.conn(), &team).unwrap();
+        let loaded = load_team(db.conn(), "team-001").unwrap().unwrap();
+
+        let bank_loan = loaded
+            .bank_loan
+            .expect("bank loan should roundtrip through DB");
+        assert_eq!(bank_loan.principal, 500_000);
+        assert_eq!(bank_loan.remaining_balance, 320_000);
+        assert_eq!(bank_loan.weekly_repayment, 20_385);
+        assert_eq!(bank_loan.remaining_weeks, 16);
+        assert_eq!(bank_loan.interest_rate_percent, 6);
+        assert_eq!(bank_loan.start_date, "2026-02-16");
     }
 
     #[test]

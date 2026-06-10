@@ -1,0 +1,2 @@
+ALTER TABLE teams
+ADD COLUMN bank_loan TEXT NOT NULL DEFAULT 'null';

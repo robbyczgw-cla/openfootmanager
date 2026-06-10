@@ -23,6 +23,8 @@ import {
 } from "../../lib/finance";
 import {
   getFinanceSnapshot,
+  repayBankLoan,
+  requestBankLoan,
   type FinanceSnapshotData,
   type TeamFinanceSnapshotData,
 } from "../../services/financeService";
@@ -129,8 +131,11 @@ function mapLocalFinanceSnapshot(
     annualWageBill: snapshot.annualWageBill,
     weeklyWageSpend: snapshot.weeklyWageSpend,
     weeklyWageBudget: snapshot.weeklyWageBudget,
-    weeklyRecurringIncome: snapshot.weeklySponsorIncome,
+    weeklyRecurringIncome:
+      snapshot.weeklySponsorIncome + snapshot.weeklyMerchandiseIncome,
     weeklySponsorIncome: snapshot.weeklySponsorIncome,
+    weeklyMerchandiseIncome: snapshot.weeklyMerchandiseIncome,
+    weeklyLoanRepayment: snapshot.weeklyLoanRepayment,
     projectedWeeklyNet: snapshot.projectedWeeklyNet,
     cashRunwayWeeks: snapshot.cashRunwayWeeks,
     wageBudgetUsagePercent: snapshot.wageBudgetUsagePercent,
@@ -258,6 +263,10 @@ export default function FinancesTab({
     tone: "success" | "error";
     text: string;
   } | null>(null);
+  const [bankLoanFeedback, setBankLoanFeedback] = useState<{
+    tone: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const roster = gameState.players.filter((p) => p.team_id === myTeam.id);
   const teamStaff = gameState.staff.filter(
@@ -277,6 +286,8 @@ export default function FinancesTab({
     myTeam.sponsorship?.sponsor_name ?? "",
     myTeam.sponsorship?.base_value ?? 0,
     myTeam.sponsorship?.remaining_weeks ?? 0,
+    myTeam.bank_loan?.remaining_balance ?? 0,
+    myTeam.bank_loan?.remaining_weeks ?? 0,
     roster
       .map(
         (player) => `${player.id}:${player.wage}:${player.contract_end ?? ""}`,
@@ -298,6 +309,7 @@ export default function FinancesTab({
       roster,
       teamStaff,
       gameState.clock.current_date,
+      gameState.manager.fan_approval,
     ),
   );
   const financeSnapshot = isRemoteFinanceDataCurrent
@@ -310,7 +322,9 @@ export default function FinancesTab({
   const totalValue = roster.reduce((s, p) => s + p.market_value, 0);
   const facilities = myTeam.facilities ?? DEFAULT_FACILITIES;
   const activeSponsorship = myTeam.sponsorship ?? null;
+  const activeBankLoan = myTeam.bank_loan ?? null;
   const weeklySponsorIncome = financeSnapshot.weeklySponsorIncome;
+  const weeklyMerchandiseIncome = financeSnapshot.weeklyMerchandiseIncome;
   const projectedWeeklyNet = financeSnapshot.projectedWeeklyNet;
   const cashRunwayWeeks = financeSnapshot.cashRunwayWeeks;
   const wageBudgetUsagePercent = financeSnapshot.wageBudgetUsagePercent;
@@ -346,6 +360,11 @@ export default function FinancesTab({
       ? previewMarketingCampaignAvailable ?? false
       : marketingCampaignAvailable(financeSnapshot)) &&
     financeSnapshot.marketingCampaignCooldownDaysRemaining === 0;
+  const canRequestBankLoan =
+    !activeBankLoan && Boolean(recoveryPreviews?.bankLoan);
+  const canRepayBankLoan = Boolean(
+    activeBankLoan && myTeam.finance >= activeBankLoan.remaining_balance,
+  );
   const sponsorPitchDisabledReason = hasActiveSponsor
     ? t("finances.sponsorPitchActiveSponsor")
     : hasPendingSponsorOffer
@@ -392,6 +411,19 @@ export default function FinancesTab({
         recoveryPreviews.marketingCampaign.campaignCost,
       ),
       days: recoveryPreviews.marketingCampaign.cooldownDays,
+    })
+    : null;
+  const bankLoanPreviewText = recoveryPreviews?.bankLoan
+    ? t("finances.loanOfferSummary", {
+      principal: formatExactMoney(recoveryPreviews.bankLoan.principal),
+      interestRate: recoveryPreviews.bankLoan.interestRatePercent,
+      weeklyRepayment: formatExactMoney(
+        recoveryPreviews.bankLoan.weeklyRepayment,
+      ),
+      weeks: recoveryPreviews.bankLoan.termWeeks,
+      totalRepayment: formatExactMoney(
+        recoveryPreviews.bankLoan.totalRepayment,
+      ),
     })
     : null;
   const contractRiskPlayers = roster
@@ -591,6 +623,59 @@ export default function FinancesTab({
     }
   }
 
+  async function handleRequestBankLoan(): Promise<void> {
+    const loadingKey = "bank-loan";
+    setBankLoanFeedback(null);
+    setActionLoading(loadingKey);
+
+    try {
+      const response = await requestBankLoan();
+      onGameUpdate?.(response.game);
+      setBankLoanFeedback({
+        tone: "success",
+        text: t("finances.loanApprovedSummary", {
+          principal: formatExactMoney(response.result.principal),
+          weeklyRepayment: formatExactMoney(response.result.weeklyRepayment),
+          weeks: response.result.termWeeks,
+          interestRate: response.result.interestRatePercent,
+        }),
+      });
+    } catch (error) {
+      console.error("Failed to request bank loan:", error);
+      setBankLoanFeedback({
+        tone: "error",
+        text: resolveBackendError(error),
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function handleRepayBankLoan(): Promise<void> {
+    const loadingKey = "repay-bank-loan";
+    setBankLoanFeedback(null);
+    setActionLoading(loadingKey);
+
+    try {
+      const response = await repayBankLoan();
+      onGameUpdate?.(response.game);
+      setBankLoanFeedback({
+        tone: "success",
+        text: t("finances.loanRepaidSummary", {
+          amount: formatExactMoney(response.result.amountPaid),
+        }),
+      });
+    } catch (error) {
+      console.error("Failed to repay bank loan:", error);
+      setBankLoanFeedback({
+        tone: "error",
+        text: resolveBackendError(error),
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
   async function handleDelegateRenewals(): Promise<void> {
     if (selectedRiskPlayers.length === 0) {
       return;
@@ -747,7 +832,7 @@ export default function FinancesTab({
       <Card className="lg:col-span-3">
         <CardHeader>{t("finances.cashFlow")}</CardHeader>
         <CardBody>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="rounded-xl border border-gray-200 dark:border-navy-600 bg-gray-50 dark:bg-navy-800 p-4 text-center">
               <p className="text-xs font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
                 {t("finances.weeklyWageSpend")}
@@ -766,6 +851,17 @@ export default function FinancesTab({
               <p className="font-heading font-bold text-xl text-primary-500">
                 {formatWeeklyAmount(
                   formatSignedAmount(weeklySponsorIncome),
+                  weeklySuffix,
+                )}
+              </p>
+            </div>
+            <div className="rounded-xl border border-gray-200 dark:border-navy-600 bg-gray-50 dark:bg-navy-800 p-4 text-center">
+              <p className="text-xs font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
+                {t("finances.weeklyMerchandiseIncome")}
+              </p>
+              <p className="font-heading font-bold text-xl text-primary-500">
+                {formatWeeklyAmount(
+                  formatSignedAmount(weeklyMerchandiseIncome),
                   weeklySuffix,
                 )}
               </p>
@@ -1169,6 +1265,91 @@ export default function FinancesTab({
                 </p>
               )}
             </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      <Card className="lg:col-span-3">
+        <CardHeader>{t("finances.bankLoan")}</CardHeader>
+        <CardBody>
+          <div className="rounded-xl border border-gray-200 dark:border-navy-600 bg-gray-50 dark:bg-navy-800 p-4 space-y-3">
+            {activeBankLoan ? (
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    {t("finances.activeLoan")}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {t("finances.loanRemainingBalance", {
+                      amount: formatExactMoney(
+                        activeBankLoan.remaining_balance,
+                      ),
+                    })}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {t("finances.loanWeeklyRepayment", {
+                      amount: formatExactMoney(
+                        activeBankLoan.weekly_repayment,
+                      ),
+                    })}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {t("finances.loanRemainingWeeks", {
+                      count: activeBankLoan.remaining_weeks,
+                    })}
+                  </p>
+                </div>
+                <Button
+                  disabled={
+                    !canRepayBankLoan || actionLoading === "repay-bank-loan"
+                  }
+                  onClick={() => void handleRepayBankLoan()}
+                  size="sm"
+                >
+                  {t("finances.repayLoanEarly")}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-heading font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    {t("finances.requestLoan")}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {t("finances.bankLoanDescription")}
+                  </p>
+                  {bankLoanPreviewText ? (
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      {bankLoanPreviewText}
+                    </p>
+                  ) : null}
+                </div>
+                <Button
+                  disabled={!canRequestBankLoan || actionLoading === "bank-loan"}
+                  onClick={() => void handleRequestBankLoan()}
+                  size="sm"
+                >
+                  {t("finances.takeLoan")}
+                </Button>
+              </div>
+            )}
+            {bankLoanFeedback ? (
+              <p
+                className={`text-sm ${bankLoanFeedback.tone === "error" ? "text-red-500" : "text-primary-500"}`}
+              >
+                {bankLoanFeedback.text}
+              </p>
+            ) : null}
+            {activeBankLoan && !canRepayBankLoan ? (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {t("finances.loanRepayInsufficientFunds")}
+              </p>
+            ) : null}
+            {!activeBankLoan && previewsLoaded && !canRequestBankLoan ? (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {t("finances.loanUnavailable")}
+              </p>
+            ) : null}
           </div>
         </CardBody>
       </Card>

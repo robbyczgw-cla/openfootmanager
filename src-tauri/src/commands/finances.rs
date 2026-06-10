@@ -3,8 +3,8 @@ use serde::Serialize;
 use tauri::State;
 
 use ofm_core::finances::{
-    BoardSupportResult, FinanceActionPreviews, MarketingCampaignResult, SponsorPitchResult,
-    TeamFinanceSnapshot,
+    BankLoanRepaymentResult, BankLoanResult, BoardSupportResult, FinanceActionPreviews,
+    MarketingCampaignResult, SponsorPitchResult, TeamFinanceSnapshot,
 };
 use ofm_core::game::Game;
 use ofm_core::state::StateManager;
@@ -31,6 +31,18 @@ pub struct SponsorPitchCommandResponse {
 pub struct MarketingCampaignCommandResponse {
     pub game: Game,
     pub result: MarketingCampaignResult,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BankLoanCommandResponse {
+    pub game: Game,
+    pub result: BankLoanResult,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BankLoanRepaymentCommandResponse {
+    pub game: Game,
+    pub result: BankLoanRepaymentResult,
 }
 
 #[tauri::command]
@@ -87,6 +99,20 @@ pub async fn request_marketing_campaign(
     state: State<'_, StateManager>,
 ) -> Result<MarketingCampaignCommandResponse, String> {
     request_marketing_campaign_internal(&state)
+}
+
+#[tauri::command]
+pub async fn request_bank_loan(
+    state: State<'_, StateManager>,
+) -> Result<BankLoanCommandResponse, String> {
+    request_bank_loan_internal(&state)
+}
+
+#[tauri::command]
+pub async fn repay_bank_loan(
+    state: State<'_, StateManager>,
+) -> Result<BankLoanRepaymentCommandResponse, String> {
+    repay_bank_loan_internal(&state)
 }
 
 fn request_board_support_internal(
@@ -152,11 +178,52 @@ fn request_marketing_campaign_internal(
     Ok(MarketingCampaignCommandResponse { game, result })
 }
 
+fn request_bank_loan_internal(state: &StateManager) -> Result<BankLoanCommandResponse, String> {
+    info!("[cmd] request_bank_loan");
+
+    let mut game = state
+        .get_game(|g: &Game| g.clone())
+        .ok_or("be.error.noActiveGameSession".to_string())?;
+
+    let team_id = game
+        .manager
+        .team_id
+        .clone()
+        .ok_or("be.error.noTeamAssigned".to_string())?;
+
+    let result = ofm_core::finances::request_bank_loan(&mut game, &team_id)?;
+
+    state.set_game(game.clone());
+    Ok(BankLoanCommandResponse { game, result })
+}
+
+fn repay_bank_loan_internal(
+    state: &StateManager,
+) -> Result<BankLoanRepaymentCommandResponse, String> {
+    info!("[cmd] repay_bank_loan");
+
+    let mut game = state
+        .get_game(|g: &Game| g.clone())
+        .ok_or("be.error.noActiveGameSession".to_string())?;
+
+    let team_id = game
+        .manager
+        .team_id
+        .clone()
+        .ok_or("be.error.noTeamAssigned".to_string())?;
+
+    let result = ofm_core::finances::repay_bank_loan(&mut game, &team_id)?;
+
+    state.set_game(game.clone());
+    Ok(BankLoanRepaymentCommandResponse { game, result })
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        get_finance_snapshot_internal, request_board_support_internal,
-        request_marketing_campaign_internal, request_sponsor_pitch_internal,
+        get_finance_snapshot_internal, repay_bank_loan_internal, request_bank_loan_internal,
+        request_board_support_internal, request_marketing_campaign_internal,
+        request_sponsor_pitch_internal,
     };
     use chrono::{TimeZone, Utc};
     use domain::manager::Manager;
@@ -354,5 +421,81 @@ mod tests {
             .messages
             .iter()
             .any(|message| message.id == response.result.message_id));
+    }
+
+    #[test]
+    fn request_bank_loan_internal_updates_managed_team_state() {
+        let state = StateManager::new();
+        state.set_game(make_game());
+
+        let response = request_bank_loan_internal(&state).expect("response");
+
+        assert!(response.result.principal >= 100_000);
+        assert_eq!(
+            response.game.teams[0].finance,
+            500_000 + response.result.principal
+        );
+        assert!(response
+            .game
+            .messages
+            .iter()
+            .any(|message| message.id == response.result.message_id));
+
+        let stored_game = state
+            .get_game(|current| current.clone())
+            .expect("stored game");
+        let stored_loan = stored_game.teams[0]
+            .bank_loan
+            .as_ref()
+            .expect("stored loan");
+        assert_eq!(stored_loan.principal, response.result.principal);
+        assert_eq!(
+            stored_loan.remaining_balance,
+            response.result.total_repayment
+        );
+    }
+
+    #[test]
+    fn request_bank_loan_internal_rejects_second_active_loan() {
+        let state = StateManager::new();
+        state.set_game(make_game());
+        request_bank_loan_internal(&state).expect("first loan");
+
+        let error = request_bank_loan_internal(&state).expect_err("should fail");
+
+        assert_eq!(error, "be.error.finance.loanAlreadyActive");
+    }
+
+    #[test]
+    fn repay_bank_loan_internal_settles_active_loan() {
+        let state = StateManager::new();
+        let mut game = make_game();
+        game.teams[0].finance = 2_000_000;
+        state.set_game(game);
+        let loan = request_bank_loan_internal(&state).expect("loan");
+
+        let response = repay_bank_loan_internal(&state).expect("response");
+
+        assert_eq!(response.result.amount_paid, loan.result.total_repayment);
+        assert!(response.game.teams[0].bank_loan.is_none());
+
+        let stored_game = state
+            .get_game(|current| current.clone())
+            .expect("stored game");
+        assert!(stored_game.teams[0].bank_loan.is_none());
+        assert!(stored_game
+            .messages
+            .iter()
+            .any(|message| message.id == response.result.message_id));
+    }
+
+    #[test]
+    fn repay_bank_loan_internal_requires_active_loan() {
+        let state = StateManager::new();
+        state.set_game(make_game());
+
+        let error = repay_bank_loan_internal(&state).expect_err("should fail");
+
+        assert_eq!(error, "be.error.finance.loanNotActive");
     }
 }

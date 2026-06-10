@@ -27,6 +27,8 @@ pub struct Team {
     #[serde(default)]
     pub sponsorship: Option<Sponsorship>,
     #[serde(default)]
+    pub bank_loan: Option<BankLoan>,
+    #[serde(default)]
     pub facilities: Facilities,
 
     // Tactical
@@ -173,6 +175,8 @@ pub enum FinancialTransactionKind {
     ContractTermination,
     BoardSupport,
     CommercialCampaign,
+    Merchandise,
+    BankLoan,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -211,6 +215,30 @@ impl Default for Sponsorship {
             base_value: 0,
             remaining_weeks: 0,
             bonus_criteria: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(default)]
+pub struct BankLoan {
+    pub principal: i64,
+    pub remaining_balance: i64,
+    pub weekly_repayment: i64,
+    pub remaining_weeks: u32,
+    pub interest_rate_percent: u32,
+    pub start_date: String,
+}
+
+impl Default for BankLoan {
+    fn default() -> Self {
+        Self {
+            principal: 0,
+            remaining_balance: 0,
+            weekly_repayment: 0,
+            remaining_weeks: 0,
+            interest_rate_percent: 0,
+            start_date: String::new(),
         }
     }
 }
@@ -269,6 +297,7 @@ impl Team {
             season_expenses: 0,
             financial_ledger: Vec::new(),
             sponsorship: None,
+            bank_loan: None,
             facilities: Facilities::default(),
             formation: "4-4-2".to_string(),
             play_style: PlayStyle::Balanced,

@@ -1243,6 +1243,15 @@
       "dark": "Dark",
       "system": "System"
     },
+    "accentTheme": "Accent Color",
+    "accentThemeDesc": "Choose the primary color palette used across the app",
+    "accentThemeOptions": {
+      "emerald": "Emerald",
+      "sapphire": "Sapphire",
+      "crimson": "Crimson",
+      "amber": "Amber",
+      "violet": "Violet"
+    },
     "language": "Language",
     "languageDesc": "Choose the display language",
     "currency": "Currency",

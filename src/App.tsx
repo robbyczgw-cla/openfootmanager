@@ -44,6 +44,14 @@ function App() {
     );
   }, [settings.high_contrast]);
 
+  useEffect(() => {
+    if (settings.accent_theme && settings.accent_theme !== "emerald") {
+      document.documentElement.dataset.accent = settings.accent_theme;
+    } else {
+      delete document.documentElement.dataset.accent;
+    }
+  }, [settings.accent_theme]);
+
   // Apply saved language from settings once loaded (overrides OS detection)
   useEffect(() => {
     if (loaded && settings.language && settings.language !== i18n.language) {

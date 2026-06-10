@@ -22,6 +22,8 @@ pub struct AppSettings {
     pub ui_scale: String, // "small" | "normal" | "large" | "xlarge"
     #[serde(default)]
     pub high_contrast: bool,
+    #[serde(default = "default_accent_theme")]
+    pub accent_theme: String, // "emerald" | "sapphire" | "crimson" | "amber" | "violet"
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -37,6 +39,9 @@ fn default_language() -> String {
 fn default_ui_scale() -> String {
     "normal".to_string()
 }
+fn default_accent_theme() -> String {
+    "emerald".to_string()
+}
 
 impl Default for AppSettings {
     fn default() -> Self {
@@ -51,6 +56,7 @@ impl Default for AppSettings {
             confirm_advance: false,
             ui_scale: "normal".to_string(),
             high_contrast: false,
+            accent_theme: "emerald".to_string(),
         }
     }
 }

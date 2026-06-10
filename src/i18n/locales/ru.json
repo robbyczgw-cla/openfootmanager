@@ -1243,6 +1243,15 @@
       "dark": "Темный",
       "system": "Система"
     },
+    "accentTheme": "Акцентный цвет",
+    "accentThemeDesc": "Выберите основную цветовую палитру приложения",
+    "accentThemeOptions": {
+      "emerald": "Изумруд",
+      "sapphire": "Сапфир",
+      "crimson": "Багровый",
+      "amber": "Янтарь",
+      "violet": "Фиолетовый"
+    },
     "language": "Язык",
     "languageDesc": "Выберите язык интерфейса",
     "currency": "Валюта",

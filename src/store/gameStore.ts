@@ -61,6 +61,7 @@ export type {
   TeamSeasonRecord,
   TeamMatchRolesData,
   TeamData,
+  BankLoanData,
   PlayerSeasonStats,
   CareerEntry,
   ContractExitIntentData,

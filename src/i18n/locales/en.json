@@ -792,6 +792,20 @@
     "requestBoardSupport": "Request Support",
     "boardSupportUnavailable": "Board support is reserved for clubs in debt or facing an imminent cash crunch.",
     "boardSupportSummary": "Board approved {{amount}} in emergency funding. Transfer budget reduced by {{transferBudgetReduction}} and board confidence fell by {{satisfactionPenalty}}.",
+    "bankLoan": "Bank Loan",
+    "requestLoan": "Request Loan",
+    "activeLoan": "Active Loan",
+    "bankLoanDescription": "Borrow an upfront cash injection from the bank, repaid in weekly installments with interest.",
+    "takeLoan": "Take Loan",
+    "repayLoanEarly": "Repay Early",
+    "loanOfferSummary": "The bank offers {{principal}} at {{interestRate}}% interest, repaid at {{weeklyRepayment}} per week over {{weeks}} weeks ({{totalRepayment}} total).",
+    "loanApprovedSummary": "Loan approved: {{principal}} received. Repaying {{weeklyRepayment}} per week over {{weeks}} weeks at {{interestRate}}% interest.",
+    "loanRepaidSummary": "Loan settled with a final payment of {{amount}}.",
+    "loanRemainingBalance": "Remaining balance: {{amount}}",
+    "loanWeeklyRepayment": "Weekly repayment: {{amount}}",
+    "loanRemainingWeeks": "{{count}} weeks remaining",
+    "loanUnavailable": "The bank is not offering terms the club can afford right now.",
+    "loanRepayInsufficientFunds": "Insufficient funds to settle the remaining balance.",
     "wagePressure": "Wage Pressure",
     "wageBudgetUsed": "{{percent}}% of wage budget used",
     "contractRisk": "Contract Risk",
@@ -1846,6 +1860,11 @@
         "sponsorPitchActiveSponsor": "An active sponsorship deal is already in place.",
         "marketingCampaignUnavailable": "Marketing campaigns are only available when the club is under wage or cash pressure.",
         "marketingCampaignCoolingDown": "The commercial team needs time before running another marketing campaign.",
+        "loanAlreadyActive": "The club already has an active bank loan.",
+        "loanAlreadyRequestedToday": "The bank has already processed a loan request today.",
+        "loanUnaffordable": "The bank declined the loan: the club could not afford the repayments.",
+        "loanNotActive": "There is no active bank loan to repay.",
+        "loanRepaymentInsufficientFunds": "Insufficient funds to settle the remaining loan balance.",
         "facilityUpgradeInsufficientFunds": "Insufficient funds for this facility upgrade. Need {{amount}}.",
         "facilityUpgradeOverBudget": "Facility upgrades are blocked while the club is over its wage budget.",
         "facilityUpgradeCritical": "Facility upgrades are blocked while the club is under serious financial pressure."
@@ -2019,6 +2038,14 @@
       "marketingCampaign": {
         "subject": "Marketing Campaign Report",
         "body": "The commercial push has finished with gross sales of {{grossRevenue}}. After {{campaignCost}} in campaign costs, the club banks {{netIncome}} in fresh income.\n\nThe commercial team will need {{days}} days before launching another campaign."
+      },
+      "bankLoanApproved": {
+        "subject": "Bank Loan Approved",
+        "body": "The bank has approved a loan of {{principal}} at {{interestRate}}% interest.\n\nThe full amount has been credited to the club account. Repayments of {{weeklyRepayment}} will be collected weekly over the next {{weeks}} weeks."
+      },
+      "bankLoanRepaid": {
+        "subject": "Bank Loan Fully Repaid",
+        "body": "The club has fully repaid its bank loan of {{principal}}, paying {{totalPaid}} in total including interest.\n\nNo further repayments are due."
       },
       "seasonPayout": {
         "subject": "Season {{season}} Prize Money Awarded",

@@ -2,7 +2,8 @@ use crate::game::Game;
 use chrono::{Datelike, NaiveDate};
 use domain::message::*;
 use domain::team::{
-    FinancialTransaction, FinancialTransactionKind, Sponsorship, SponsorshipBonusCriterion, Team,
+    BankLoan, FinancialTransaction, FinancialTransactionKind, Sponsorship,
+    SponsorshipBonusCriterion, Team,
 };
 use rand::RngExt;
 use serde::Serialize;
@@ -26,6 +27,10 @@ const MERCHANDISE_MAX_WEEKLY_INCOME: i64 = 75_000;
 const MERCHANDISE_REPUTATION_MULTIPLIER: i64 = 6;
 const MERCHANDISE_WIN_FORM_BONUS: i64 = 400;
 const MERCHANDISE_NEUTRAL_FAN_APPROVAL: u8 = 50;
+const BANK_LOAN_TERM_WEEKS: u32 = 26;
+const BANK_LOAN_MIN_PRINCIPAL: i64 = 100_000;
+const BANK_LOAN_MAX_PRINCIPAL: i64 = 2_000_000;
+const BANK_LOAN_REPUTATION_MULTIPLIER: i64 = 500;
 
 fn marketing_campaign_activation_description() -> String {
     ["Marketing", "campaign", "activation", "spend"].join(" ")
@@ -37,6 +42,18 @@ fn marketing_campaign_revenue_description() -> String {
 
 fn merchandise_income_description() -> String {
     ["Weekly", "merchandise", "sales", "income"].join(" ")
+}
+
+fn bank_loan_drawdown_description() -> String {
+    ["Bank", "loan", "drawdown"].join(" ")
+}
+
+fn bank_loan_repayment_description() -> String {
+    ["Bank", "loan", "weekly", "repayment"].join(" ")
+}
+
+fn bank_loan_early_settlement_description() -> String {
+    ["Bank", "loan", "early", "settlement"].join(" ")
 }
 
 fn board_support_description(season: u32) -> String {
@@ -64,6 +81,7 @@ pub struct TeamFinanceSnapshot {
     pub weekly_recurring_income: i64,
     pub weekly_sponsor_income: i64,
     pub weekly_merchandise_income: i64,
+    pub weekly_loan_repayment: i64,
     pub projected_weekly_net: i64,
     pub cash_runway_weeks: Option<i64>,
     pub wage_budget_usage_percent: u32,
@@ -97,11 +115,21 @@ pub struct MarketingCampaignPreview {
     pub cooldown_days: u32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct BankLoanPreview {
+    pub principal: i64,
+    pub interest_rate_percent: u32,
+    pub term_weeks: u32,
+    pub weekly_repayment: i64,
+    pub total_repayment: i64,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Default)]
 pub struct FinanceActionPreviews {
     pub board_support: Option<BoardSupportResult>,
     pub sponsor_pitch: Option<SponsorPitchPreview>,
     pub marketing_campaign: Option<MarketingCampaignPreview>,
+    pub bank_loan: Option<BankLoanPreview>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -119,6 +147,22 @@ pub struct MarketingCampaignResult {
     pub campaign_cost: i64,
     pub net_income: i64,
     pub cooldown_days: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct BankLoanResult {
+    pub message_id: String,
+    pub principal: i64,
+    pub interest_rate_percent: u32,
+    pub term_weeks: u32,
+    pub weekly_repayment: i64,
+    pub total_repayment: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct BankLoanRepaymentResult {
+    pub message_id: String,
+    pub amount_paid: i64,
 }
 
 fn wage_budget_status(usage_percent: u32) -> FinanceHealthLevel {
@@ -281,6 +325,13 @@ fn team_fan_approval(game: &Game, team_id: &str) -> u8 {
     }
 }
 
+fn weekly_loan_repayment_due(team: &Team) -> i64 {
+    team.bank_loan
+        .as_ref()
+        .map(|loan| loan.weekly_repayment.min(loan.remaining_balance))
+        .unwrap_or(0)
+}
+
 fn estimated_weekly_matchday_income(game: &Game, team: &Team) -> i64 {
     let recent_home_match_count = count_recent_home_matches(game, &team.id);
     if recent_home_match_count == 0 {
@@ -307,9 +358,10 @@ pub fn team_finance_snapshot(game: &Game, team_id: &str) -> Option<TeamFinanceSn
     let weekly_matchday_income = estimated_weekly_matchday_income(game, team);
     let weekly_merchandise_income =
         weekly_merchandise_income(team, current_position, team_fan_approval(game, team_id));
+    let weekly_loan_repayment = weekly_loan_repayment_due(team);
     let weekly_recurring_income =
         weekly_sponsor_income + weekly_matchday_income + weekly_merchandise_income;
-    let projected_weekly_net = weekly_recurring_income - weekly_wage_spend;
+    let projected_weekly_net = weekly_recurring_income - weekly_wage_spend - weekly_loan_repayment;
     let cash_runway_weeks = calc_cash_runway_weeks(team.finance, projected_weekly_net);
     let wage_budget_usage_percent = ((annual_wage_bill * 100) / std::cmp::max(1, team.wage_budget))
         .clamp(0, u32::MAX as i64) as u32;
@@ -323,6 +375,7 @@ pub fn team_finance_snapshot(game: &Game, team_id: &str) -> Option<TeamFinanceSn
         weekly_recurring_income,
         weekly_sponsor_income,
         weekly_merchandise_income,
+        weekly_loan_repayment,
         projected_weekly_net,
         cash_runway_weeks,
         wage_budget_usage_percent,
@@ -444,6 +497,79 @@ fn marketing_campaign_message(
     ))
 }
 
+fn bank_loan_approved_message(today: &str, preview: &BankLoanPreview) -> InboxMessage {
+    InboxMessage::new(
+        format!("bank_loan_approved_{}", today),
+        String::new(),
+        String::new(),
+        String::new(),
+        today.to_string(),
+    )
+    .with_category(MessageCategory::Finance)
+    .with_priority(MessagePriority::Normal)
+    .with_sender_role("")
+    .with_i18n(
+        "be.msg.bankLoanApproved.subject",
+        "be.msg.bankLoanApproved.body",
+        {
+            let mut p = std::collections::HashMap::new();
+            p.insert(
+                "principal".to_string(),
+                format_money(preview.principal as u64),
+            );
+            p.insert(
+                "weeklyRepayment".to_string(),
+                format_money(preview.weekly_repayment as u64),
+            );
+            p.insert("weeks".to_string(), preview.term_weeks.to_string());
+            p.insert(
+                "interestRate".to_string(),
+                preview.interest_rate_percent.to_string(),
+            );
+            p
+        },
+    )
+    .with_sender_i18n("be.sender.financialDirector", "be.role.financialDirector")
+    .with_action(action(
+        "view_finances",
+        "",
+        "be.msg.action.viewFinances",
+        ActionType::NavigateTo {
+            route: "/dashboard?tab=Finances".to_string(),
+        },
+    ))
+}
+
+fn bank_loan_repaid_message(today: &str, principal: i64, total_paid: i64) -> InboxMessage {
+    InboxMessage::new(
+        format!("bank_loan_repaid_{}", today),
+        String::new(),
+        String::new(),
+        String::new(),
+        today.to_string(),
+    )
+    .with_category(MessageCategory::Finance)
+    .with_priority(MessagePriority::Normal)
+    .with_sender_role("")
+    .with_i18n(
+        "be.msg.bankLoanRepaid.subject",
+        "be.msg.bankLoanRepaid.body",
+        {
+            let mut p = std::collections::HashMap::new();
+            p.insert("principal".to_string(), format_money(principal as u64));
+            p.insert("totalPaid".to_string(), format_money(total_paid as u64));
+            p
+        },
+    )
+    .with_sender_i18n("be.sender.financialDirector", "be.role.financialDirector")
+    .with_action(action(
+        "ack",
+        "",
+        "be.msg.event.ack",
+        ActionType::Acknowledge,
+    ))
+}
+
 fn board_support_season(game: &Game) -> u32 {
     game.league
         .as_ref()
@@ -539,6 +665,51 @@ fn marketing_campaign_gross_revenue(team: &Team, snapshot: &TeamFinanceSnapshot)
 
 fn marketing_campaign_cost(gross_revenue: i64) -> i64 {
     (gross_revenue / 4).max(MARKETING_CAMPAIGN_MIN_COST)
+}
+
+fn bank_loan_interest_rate_percent(snapshot: &TeamFinanceSnapshot) -> u32 {
+    let base = match snapshot.overall_status {
+        FinanceHealthLevel::Stable => 6,
+        FinanceHealthLevel::Watch => 9,
+        FinanceHealthLevel::Warning => 14,
+        FinanceHealthLevel::Critical => 20,
+    };
+
+    if snapshot.currently_in_debt {
+        base + 4
+    } else {
+        base
+    }
+}
+
+fn bank_loan_principal(team: &Team, snapshot: &TeamFinanceSnapshot) -> i64 {
+    let base = team.wage_budget / 2 + team.reputation as i64 * BANK_LOAN_REPUTATION_MULTIPLIER;
+    let health_percent = match snapshot.overall_status {
+        FinanceHealthLevel::Stable => 100,
+        FinanceHealthLevel::Watch => 80,
+        FinanceHealthLevel::Warning => 60,
+        FinanceHealthLevel::Critical => 40,
+    };
+
+    (base * health_percent / 100).clamp(BANK_LOAN_MIN_PRINCIPAL, BANK_LOAN_MAX_PRINCIPAL)
+}
+
+fn bank_loan_weekly_repayment(total_repayment: i64, term_weeks: u32) -> i64 {
+    (total_repayment + term_weeks as i64 - 1) / term_weeks as i64
+}
+
+fn bank_loan_is_affordable(
+    team: &Team,
+    snapshot: &TeamFinanceSnapshot,
+    preview: &BankLoanPreview,
+) -> bool {
+    let projected_net_with_loan = snapshot.projected_weekly_net - preview.weekly_repayment;
+    if projected_net_with_loan >= 0 {
+        return true;
+    }
+
+    let balance_with_principal = team.finance + preview.principal;
+    balance_with_principal / projected_net_with_loan.abs() >= preview.term_weeks as i64
 }
 
 fn has_pending_sponsor_offer(game: &Game) -> bool {
@@ -727,6 +898,38 @@ pub fn preview_marketing_campaign(
     })
 }
 
+pub fn preview_bank_loan(game: &Game, team_id: &str) -> Result<BankLoanPreview, String> {
+    let snapshot =
+        team_finance_snapshot(game, team_id).ok_or("be.error.managedTeamNotFound".to_string())?;
+    let team = game
+        .teams
+        .iter()
+        .find(|team| team.id == team_id)
+        .ok_or("be.error.managedTeamNotFound".to_string())?;
+
+    if team.bank_loan.is_some() {
+        return Err("be.error.finance.loanAlreadyActive".to_string());
+    }
+
+    let principal = bank_loan_principal(team, &snapshot);
+    let interest_rate_percent = bank_loan_interest_rate_percent(&snapshot);
+    let total_repayment = principal * (100 + interest_rate_percent as i64) / 100;
+    let weekly_repayment = bank_loan_weekly_repayment(total_repayment, BANK_LOAN_TERM_WEEKS);
+    let preview = BankLoanPreview {
+        principal,
+        interest_rate_percent,
+        term_weeks: BANK_LOAN_TERM_WEEKS,
+        weekly_repayment,
+        total_repayment,
+    };
+
+    if !bank_loan_is_affordable(team, &snapshot, &preview) {
+        return Err("be.error.finance.loanUnaffordable".to_string());
+    }
+
+    Ok(preview)
+}
+
 pub fn finance_action_previews(game: &Game, team_id: &str) -> Option<FinanceActionPreviews> {
     game.teams.iter().find(|team| team.id == team_id)?;
 
@@ -734,6 +937,7 @@ pub fn finance_action_previews(game: &Game, team_id: &str) -> Option<FinanceActi
         board_support: preview_board_support(game, team_id).ok(),
         sponsor_pitch: preview_sponsor_pitch(game, team_id).ok(),
         marketing_campaign: preview_marketing_campaign(game, team_id).ok(),
+        bank_loan: preview_bank_loan(game, team_id).ok(),
     })
 }
 
@@ -814,6 +1018,88 @@ pub fn request_marketing_campaign(
         campaign_cost,
         net_income,
         cooldown_days: preview.cooldown_days,
+    })
+}
+
+pub fn request_bank_loan(game: &mut Game, team_id: &str) -> Result<BankLoanResult, String> {
+    let preview = preview_bank_loan(game, team_id)?;
+    let today_label = game.clock.current_date.format("%Y-%m-%d").to_string();
+    let message = bank_loan_approved_message(&today_label, &preview);
+    let message_id = message.id.clone();
+
+    if game.messages.iter().any(|message| message.id == message_id) {
+        return Err("be.error.finance.loanAlreadyRequestedToday".to_string());
+    }
+
+    let team = game
+        .teams
+        .iter_mut()
+        .find(|team| team.id == team_id)
+        .ok_or("be.error.managedTeamNotFound".to_string())?;
+
+    team.finance += preview.principal;
+    team.season_income += preview.principal;
+    team.bank_loan = Some(BankLoan {
+        principal: preview.principal,
+        remaining_balance: preview.total_repayment,
+        weekly_repayment: preview.weekly_repayment,
+        remaining_weeks: preview.term_weeks,
+        interest_rate_percent: preview.interest_rate_percent,
+        start_date: today_label.clone(),
+    });
+    team.financial_ledger.push(FinancialTransaction {
+        date: today_label,
+        description: bank_loan_drawdown_description(),
+        amount: preview.principal,
+        kind: FinancialTransactionKind::BankLoan,
+    });
+    game.messages.push(message);
+
+    Ok(BankLoanResult {
+        message_id,
+        principal: preview.principal,
+        interest_rate_percent: preview.interest_rate_percent,
+        term_weeks: preview.term_weeks,
+        weekly_repayment: preview.weekly_repayment,
+        total_repayment: preview.total_repayment,
+    })
+}
+
+pub fn repay_bank_loan(game: &mut Game, team_id: &str) -> Result<BankLoanRepaymentResult, String> {
+    let today_label = game.clock.current_date.format("%Y-%m-%d").to_string();
+    let team = game
+        .teams
+        .iter_mut()
+        .find(|team| team.id == team_id)
+        .ok_or("be.error.managedTeamNotFound".to_string())?;
+
+    let Some(loan) = team.bank_loan.clone() else {
+        return Err("be.error.finance.loanNotActive".to_string());
+    };
+
+    let amount_due = loan.remaining_balance;
+    if team.finance < amount_due {
+        return Err("be.error.finance.loanRepaymentInsufficientFunds".to_string());
+    }
+
+    team.finance -= amount_due;
+    team.season_expenses += amount_due;
+    team.bank_loan = None;
+    team.financial_ledger.push(FinancialTransaction {
+        date: today_label.clone(),
+        description: bank_loan_early_settlement_description(),
+        amount: -amount_due,
+        kind: FinancialTransactionKind::BankLoan,
+    });
+
+    let total_paid = loan.principal * (100 + loan.interest_rate_percent as i64) / 100;
+    let message = bank_loan_repaid_message(&today_label, loan.principal, total_paid);
+    let message_id = message.id.clone();
+    game.messages.push(message);
+
+    Ok(BankLoanRepaymentResult {
+        message_id,
+        amount_paid: amount_due,
     })
 }
 
@@ -926,6 +1212,7 @@ fn count_recent_home_matches(game: &Game, team_id: &str) -> i64 {
 /// - Deduct staff wages
 /// - Add merchandise sales income for every club
 /// - Add matchday revenue for home matches played that week
+/// - Collect scheduled bank loan repayments
 /// - Check financial health and generate warnings
 pub fn process_weekly_finances(game: &mut Game) {
     let weekday = game.clock.current_date.weekday().num_days_from_monday();
@@ -1005,6 +1292,41 @@ pub fn process_weekly_finances(game: &mut Game) {
                 kind: FinancialTransactionKind::Merchandise,
             });
         }
+    }
+
+    // --- Bank loan repayments ---
+    let mut user_loan_repaid: Option<(i64, i64)> = None;
+    for team in game.teams.iter_mut() {
+        let Some(mut loan) = team.bank_loan.take() else {
+            continue;
+        };
+
+        let installment = loan.weekly_repayment.min(loan.remaining_balance);
+        team.finance -= installment;
+        team.season_expenses += installment;
+        loan.remaining_balance -= installment;
+        loan.remaining_weeks = loan.remaining_weeks.saturating_sub(1);
+
+        let is_user_team = user_team_id.as_deref() == Some(team.id.as_str());
+        if is_user_team {
+            team.financial_ledger.push(FinancialTransaction {
+                date: today.clone(),
+                description: bank_loan_repayment_description(),
+                amount: -installment,
+                kind: FinancialTransactionKind::BankLoan,
+            });
+        }
+
+        if loan.remaining_balance > 0 {
+            team.bank_loan = Some(loan);
+        } else if is_user_team {
+            let total_paid = loan.principal * (100 + loan.interest_rate_percent as i64) / 100;
+            user_loan_repaid = Some((loan.principal, total_paid));
+        }
+    }
+    if let Some((principal, total_paid)) = user_loan_repaid {
+        game.messages
+            .push(bank_loan_repaid_message(&today, principal, total_paid));
     }
 
     // --- Matchday income for home matches completed in last 7 days ---
@@ -1206,7 +1528,10 @@ fn format_money(amount: u64) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{preview_sponsor_pitch, process_weekly_finances, weekly_merchandise_income};
+    use super::{
+        preview_bank_loan, preview_sponsor_pitch, process_weekly_finances, repay_bank_loan,
+        request_bank_loan, weekly_merchandise_income,
+    };
     use crate::clock::GameClock;
     use crate::game::Game;
     use chrono::{TimeZone, Utc};
@@ -1365,5 +1690,163 @@ mod tests {
                 .any(|entry| entry.kind == FinancialTransactionKind::Merchandise),
             "AI clubs should not accumulate weekly ledger entries"
         );
+    }
+
+    #[test]
+    fn preview_bank_loan_charges_higher_interest_under_financial_pressure() {
+        let mut healthy_game = make_game();
+        healthy_game.teams[0].finance = 2_000_000;
+        let mut pressured_game = make_game();
+        pressured_game.teams[0].finance = -25_000;
+
+        let healthy_preview = preview_bank_loan(&healthy_game, "team1").expect("healthy preview");
+        let pressured_preview =
+            preview_bank_loan(&pressured_game, "team1").expect("pressured preview");
+
+        assert!(
+            pressured_preview.interest_rate_percent > healthy_preview.interest_rate_percent,
+            "Poor financial health should raise the interest rate"
+        );
+        assert!(
+            pressured_preview.principal < healthy_preview.principal,
+            "Poor financial health should reduce the available principal"
+        );
+    }
+
+    #[test]
+    fn preview_bank_loan_rejects_clubs_with_an_active_loan() {
+        let mut game = make_game();
+        game.teams[0].finance = 2_000_000;
+        request_bank_loan(&mut game, "team1").expect("first loan");
+
+        let error = preview_bank_loan(&game, "team1").expect_err("second loan should fail");
+
+        assert_eq!(error, "be.error.finance.loanAlreadyActive");
+    }
+
+    #[test]
+    fn preview_bank_loan_rejects_unaffordable_repayments() {
+        let mut game = make_game();
+        game.teams[0].finance = -2_500_000;
+        game.teams[0].reputation = 0;
+        game.teams[0].wage_budget = 50_000_000;
+
+        let error = preview_bank_loan(&game, "team1").expect_err("unaffordable loan should fail");
+
+        assert_eq!(error, "be.error.finance.loanUnaffordable");
+    }
+
+    #[test]
+    fn request_bank_loan_credits_principal_and_records_state() {
+        let mut game = make_game();
+        game.teams[0].finance = 2_000_000;
+
+        let result = request_bank_loan(&mut game, "team1").expect("loan");
+
+        assert_eq!(game.teams[0].finance, 2_000_000 + result.principal);
+        assert_eq!(game.teams[0].season_income, result.principal);
+        let loan = game.teams[0].bank_loan.as_ref().expect("active loan");
+        assert_eq!(loan.principal, result.principal);
+        assert_eq!(loan.remaining_balance, result.total_repayment);
+        assert_eq!(loan.weekly_repayment, result.weekly_repayment);
+        assert_eq!(loan.remaining_weeks, result.term_weeks);
+        assert_eq!(
+            game.teams[0].financial_ledger.last().expect("ledger").kind,
+            FinancialTransactionKind::BankLoan
+        );
+        let message = game
+            .messages
+            .iter()
+            .find(|message| message.id == result.message_id)
+            .expect("loan approval message");
+        assert_eq!(
+            message.subject_key.as_deref(),
+            Some("be.msg.bankLoanApproved.subject")
+        );
+    }
+
+    #[test]
+    fn weekly_loan_repayments_follow_the_schedule_until_settled() {
+        let mut game = make_game();
+        game.teams[0].finance = 2_000_000;
+        let result = request_bank_loan(&mut game, "team1").expect("loan");
+        let finance_after_loan = game.teams[0].finance;
+        let merchandise_income =
+            weekly_merchandise_income(&game.teams[0], Some(1), game.manager.fan_approval);
+
+        process_weekly_finances(&mut game);
+
+        let loan = game.teams[0].bank_loan.as_ref().expect("loan still open");
+        assert_eq!(
+            loan.remaining_balance,
+            result.total_repayment - result.weekly_repayment
+        );
+        assert_eq!(loan.remaining_weeks, result.term_weeks - 1);
+        assert_eq!(
+            game.teams[0].finance,
+            finance_after_loan + merchandise_income - result.weekly_repayment
+        );
+
+        // Fast-forward the remaining schedule.
+        for _ in 1..result.term_weeks {
+            game.clock.current_date += chrono::Duration::days(7);
+            process_weekly_finances(&mut game);
+        }
+
+        assert!(
+            game.teams[0].bank_loan.is_none(),
+            "Loan should be settled after the full term"
+        );
+        assert!(
+            game.messages
+                .iter()
+                .any(|message| message.subject_key.as_deref()
+                    == Some("be.msg.bankLoanRepaid.subject")),
+            "Settling the loan should notify the manager"
+        );
+        let repayment_total: i64 = game.teams[0]
+            .financial_ledger
+            .iter()
+            .filter(|entry| entry.kind == FinancialTransactionKind::BankLoan && entry.amount < 0)
+            .map(|entry| -entry.amount)
+            .sum();
+        assert_eq!(repayment_total, result.total_repayment);
+    }
+
+    #[test]
+    fn repay_bank_loan_settles_the_balance_early() {
+        let mut game = make_game();
+        game.teams[0].finance = 2_000_000;
+        let result = request_bank_loan(&mut game, "team1").expect("loan");
+        let finance_after_loan = game.teams[0].finance;
+
+        let repayment = repay_bank_loan(&mut game, "team1").expect("early repayment");
+
+        assert_eq!(repayment.amount_paid, result.total_repayment);
+        assert_eq!(
+            game.teams[0].finance,
+            finance_after_loan - result.total_repayment
+        );
+        assert!(game.teams[0].bank_loan.is_none());
+        assert!(
+            game.messages
+                .iter()
+                .any(|message| message.id == repayment.message_id)
+        );
+    }
+
+    #[test]
+    fn repay_bank_loan_requires_an_active_loan_and_sufficient_funds() {
+        let mut game = make_game();
+        game.teams[0].finance = 2_000_000;
+
+        let error = repay_bank_loan(&mut game, "team1").expect_err("no loan to repay");
+        assert_eq!(error, "be.error.finance.loanNotActive");
+
+        request_bank_loan(&mut game, "team1").expect("loan");
+        game.teams[0].finance = 0;
+
+        let error = repay_bank_loan(&mut game, "team1").expect_err("cannot afford settlement");
+        assert_eq!(error, "be.error.finance.loanRepaymentInsufficientFunds");
     }
 }

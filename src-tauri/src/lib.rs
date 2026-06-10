@@ -99,6 +99,8 @@ pub fn run() {
             request_board_support,
             request_marketing_campaign,
             request_sponsor_pitch,
+            request_bank_loan,
+            repay_bank_loan,
             propose_renewal,
             delegate_renewals,
             preview_renewal_financial_impact,

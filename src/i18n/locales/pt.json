@@ -792,6 +792,20 @@
     "requestBoardSupport": "Pedir apoio",
     "boardSupportUnavailable": "O apoio da direção está reservado a clubes em dívida ou perto de uma crise de caixa.",
     "boardSupportSummary": "A direção aprovou {{amount}} em financiamento de emergência. O orçamento de transferências cai {{transferBudgetReduction}} e a confiança baixa {{satisfactionPenalty}}.",
+    "bankLoan": "Empréstimo bancário",
+    "requestLoan": "Pedir empréstimo",
+    "activeLoan": "Empréstimo ativo",
+    "bankLoanDescription": "Pede ao banco uma injeção imediata de dinheiro, paga em prestações semanais com juros.",
+    "takeLoan": "Contrair empréstimo",
+    "repayLoanEarly": "Liquidar antecipadamente",
+    "loanOfferSummary": "O banco oferece {{principal}} a {{interestRate}}% de juros, pagos a {{weeklyRepayment}} por semana durante {{weeks}} semanas ({{totalRepayment}} no total).",
+    "loanApprovedSummary": "Empréstimo aprovado: {{principal}} recebidos. A pagar {{weeklyRepayment}} por semana durante {{weeks}} semanas a {{interestRate}}% de juros.",
+    "loanRepaidSummary": "Empréstimo liquidado com um pagamento final de {{amount}}.",
+    "loanRemainingBalance": "Saldo em dívida: {{amount}}",
+    "loanWeeklyRepayment": "Prestação semanal: {{amount}}",
+    "loanRemainingWeeks": "{{count}} semanas restantes",
+    "loanUnavailable": "O banco não oferece neste momento condições que o clube possa suportar.",
+    "loanRepayInsufficientFunds": "Fundos insuficientes para liquidar o saldo em dívida.",
     "wagePressure": "Pressão salarial",
     "wageBudgetUsed": "{{percent}}% do orçamento salarial utilizado",
     "contractRisk": "Risco contratual",
@@ -1846,6 +1860,11 @@
         "sponsorPitchActiveSponsor": "Já existe um acordo de patrocínio ativo.",
         "marketingCampaignUnavailable": "As campanhas de marketing só estão disponíveis quando o clube está sob pressão salarial ou de tesouraria.",
         "marketingCampaignCoolingDown": "A equipa comercial precisa de tempo antes de lançar outra campanha de marketing.",
+        "loanAlreadyActive": "O clube já tem um empréstimo bancário ativo.",
+        "loanAlreadyRequestedToday": "O banco já processou um pedido de empréstimo hoje.",
+        "loanUnaffordable": "O banco recusou o empréstimo: o clube não conseguiria suportar as prestações.",
+        "loanNotActive": "Não há nenhum empréstimo bancário ativo para pagar.",
+        "loanRepaymentInsufficientFunds": "Fundos insuficientes para liquidar o saldo em dívida do empréstimo.",
         "facilityUpgradeInsufficientFunds": "Fundos insuficientes para esta melhoria de infraestruturas. São necessários {{amount}}.",
         "facilityUpgradeOverBudget": "As melhorias das infraestruturas estão bloqueadas enquanto o clube exceder o orçamento salarial.",
         "facilityUpgradeCritical": "As melhorias das infraestruturas estão bloqueadas enquanto o clube estiver sob forte pressão financeira."
@@ -2023,6 +2042,14 @@
       "marketingCampaign": {
         "subject": "Relatório da campanha de marketing",
         "body": "A ação comercial terminou com vendas brutas de {{grossRevenue}}. Depois de {{campaignCost}} em custos de campanha, o clube encaixa {{netIncome}} de nova receita.\n\nA equipa comercial precisará de {{days}} dias antes de lançar outra campanha."
+      },
+      "bankLoanApproved": {
+        "subject": "Empréstimo bancário aprovado",
+        "body": "O banco aprovou um empréstimo de {{principal}} a {{interestRate}}% de juros.\n\nO montante total foi creditado na conta do clube. Serão cobradas prestações semanais de {{weeklyRepayment}} durante as próximas {{weeks}} semanas."
+      },
+      "bankLoanRepaid": {
+        "subject": "Empréstimo bancário totalmente pago",
+        "body": "O clube pagou na totalidade o seu empréstimo bancário de {{principal}}, num total de {{totalPaid}} incluindo juros.\n\nNão há mais prestações em dívida."
       },
       "seasonPayout": {
         "subject": "Época {{season}} — Prémio atribuído",

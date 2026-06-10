@@ -792,6 +792,20 @@
     "requestBoardSupport": "Hilfe anfordern",
     "boardSupportUnavailable": "Vorstandshilfe ist nur für Clubs in Schulden oder mit akutem Liquiditätsdruck verfügbar.",
     "boardSupportSummary": "Der Vorstand hat {{amount}} Notfinanzierung genehmigt. Das Transferbudget sinkt um {{transferBudgetReduction}} und das Vorstandsvertrauen fällt um {{satisfactionPenalty}}.",
+    "bankLoan": "Bankdarlehen",
+    "requestLoan": "Darlehen anfragen",
+    "activeLoan": "Aktives Darlehen",
+    "bankLoanDescription": "Leihe dir eine sofortige Finanzspritze von der Bank, zurückgezahlt in wöchentlichen Raten mit Zinsen.",
+    "takeLoan": "Darlehen aufnehmen",
+    "repayLoanEarly": "Vorzeitig tilgen",
+    "loanOfferSummary": "Die Bank bietet {{principal}} zu {{interestRate}}% Zinsen, zurückgezahlt mit {{weeklyRepayment}} pro Woche über {{weeks}} Wochen ({{totalRepayment}} gesamt).",
+    "loanApprovedSummary": "Darlehen genehmigt: {{principal}} erhalten. Rückzahlung von {{weeklyRepayment}} pro Woche über {{weeks}} Wochen zu {{interestRate}}% Zinsen.",
+    "loanRepaidSummary": "Darlehen mit einer Schlusszahlung von {{amount}} getilgt.",
+    "loanRemainingBalance": "Restschuld: {{amount}}",
+    "loanWeeklyRepayment": "Wöchentliche Rate: {{amount}}",
+    "loanRemainingWeeks": "{{count}} Wochen verbleibend",
+    "loanUnavailable": "Die Bank bietet derzeit keine Konditionen an, die sich der Club leisten kann.",
+    "loanRepayInsufficientFunds": "Nicht genügend Mittel, um die Restschuld zu begleichen.",
     "wagePressure": "Gehaltsdruck",
     "wageBudgetUsed": "{{percent}}% des Gehaltsbudgets genutzt",
     "contractRisk": "Vertragsrisiko",
@@ -1846,6 +1860,11 @@
         "sponsorPitchActiveSponsor": "Es gibt bereits einen aktiven Sponsorenvertrag.",
         "marketingCampaignUnavailable": "Marketingkampagnen sind nur verfügbar, wenn der Club unter Gehalts- oder Liquiditätsdruck steht.",
         "marketingCampaignCoolingDown": "Das Kommerz-Team braucht Zeit, bevor es eine weitere Marketingkampagne startet.",
+        "loanAlreadyActive": "Der Club hat bereits ein aktives Bankdarlehen.",
+        "loanAlreadyRequestedToday": "Die Bank hat heute bereits eine Darlehensanfrage bearbeitet.",
+        "loanUnaffordable": "Die Bank hat abgelehnt: Der Club könnte sich die Raten nicht leisten.",
+        "loanNotActive": "Es gibt kein aktives Bankdarlehen zur Rückzahlung.",
+        "loanRepaymentInsufficientFunds": "Nicht genügend Mittel, um die verbleibende Darlehensschuld zu begleichen.",
         "facilityUpgradeInsufficientFunds": "Nicht genug Geld für diesen Ausbau. Benötigt werden {{amount}}.",
         "facilityUpgradeOverBudget": "Ausbauten sind blockiert, solange der Club sein Gehaltsbudget überschreitet.",
         "facilityUpgradeCritical": "Ausbauten sind blockiert, solange der Club unter erheblichem finanziellem Druck steht."
@@ -2023,6 +2042,14 @@
       "marketingCampaign": {
         "subject": "Bericht zur Marketingkampagne",
         "body": "Die kommerzielle Aktion ist abgeschlossen und hat Bruttoverkäufe von {{grossRevenue}} erzielt. Nach Kampagnenkosten von {{campaignCost}} bleiben dem Club {{netIncome}} an frischem Einkommen.\n\nDas Kommerz-Team benötigt {{days}} Tage, bevor eine weitere Kampagne gestartet werden kann."
+      },
+      "bankLoanApproved": {
+        "subject": "Bankdarlehen genehmigt",
+        "body": "Die Bank hat ein Darlehen über {{principal}} zu {{interestRate}}% Zinsen genehmigt.\n\nDer volle Betrag wurde dem Clubkonto gutgeschrieben. Raten von {{weeklyRepayment}} werden in den nächsten {{weeks}} Wochen wöchentlich eingezogen."
+      },
+      "bankLoanRepaid": {
+        "subject": "Bankdarlehen vollständig getilgt",
+        "body": "Der Club hat sein Bankdarlehen über {{principal}} vollständig getilgt und insgesamt {{totalPaid}} inklusive Zinsen gezahlt.\n\nEs sind keine weiteren Raten fällig."
       },
       "seasonPayout": {
         "subject": "Saison {{season}} — Preisgeld ausgezahlt",

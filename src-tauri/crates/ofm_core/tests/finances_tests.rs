@@ -158,6 +158,7 @@ fn team_finance_snapshot_uses_canonical_backend_values() {
     assert_eq!(snapshot.weekly_wage_budget, 2_000_000 / 52);
     assert_eq!(snapshot.weekly_sponsor_income, 2_000);
     assert_eq!(snapshot.weekly_merchandise_income, 3_000);
+    assert_eq!(snapshot.weekly_loan_repayment, 0);
     assert_eq!(snapshot.weekly_recurring_income, 5_000);
     assert_eq!(snapshot.projected_weekly_net, 3_300);
     assert_eq!(snapshot.cash_runway_weeks, None);

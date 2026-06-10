@@ -16,12 +16,22 @@ export interface SponsorshipData {
   bonus_criteria: unknown[];
 }
 
+export interface BankLoanData {
+  principal: number;
+  remaining_balance: number;
+  weekly_repayment: number;
+  remaining_weeks: number;
+  interest_rate_percent: number;
+  start_date: string;
+}
+
 export type TransactionKind =
   | "PrizeMoney"
   | "ContractTermination"
   | "BoardSupport"
   | "CommercialCampaign"
-  | "Merchandise";
+  | "Merchandise"
+  | "BankLoan";
 
 export interface FinancialTransactionData {
   date: string;
@@ -74,6 +84,7 @@ export interface TeamData {
   colors: TeamColors;
   facilities?: FacilitiesData;
   sponsorship?: SponsorshipData | null;
+  bank_loan?: BankLoanData | null;
   starting_xi_ids: string[];
   match_roles?: TeamMatchRolesData;
   form: string[];

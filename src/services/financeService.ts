@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import type { GameStateData } from "../store/gameStore";
+
 export type FinanceHealthLevelData =
     | "stable"
     | "watch"
@@ -13,6 +15,7 @@ interface BackendTeamFinanceSnapshotData {
     weekly_recurring_income: number;
     weekly_sponsor_income: number;
     weekly_merchandise_income: number;
+    weekly_loan_repayment: number;
     projected_weekly_net: number;
     cash_runway_weeks: number | null;
     wage_budget_usage_percent: number;
@@ -43,10 +46,19 @@ interface BackendMarketingCampaignPreviewData {
     cooldown_days: number;
 }
 
+interface BackendBankLoanPreviewData {
+    principal: number;
+    interest_rate_percent: number;
+    term_weeks: number;
+    weekly_repayment: number;
+    total_repayment: number;
+}
+
 interface BackendFinanceActionPreviewsData {
     board_support?: BackendBoardSupportPreviewData | null;
     sponsor_pitch?: BackendSponsorPitchPreviewData | null;
     marketing_campaign?: BackendMarketingCampaignPreviewData | null;
+    bank_loan?: BackendBankLoanPreviewData | null;
 }
 
 interface BackendFinanceSnapshotResponseData {
@@ -61,6 +73,7 @@ export interface TeamFinanceSnapshotData {
     weeklyRecurringIncome: number;
     weeklySponsorIncome: number;
     weeklyMerchandiseIncome: number;
+    weeklyLoanRepayment: number;
     projectedWeeklyNet: number;
     cashRunwayWeeks: number | null;
     wageBudgetUsagePercent: number;
@@ -91,10 +104,19 @@ export interface MarketingCampaignPreviewData {
     cooldownDays: number;
 }
 
+export interface BankLoanPreviewData {
+    principal: number;
+    interestRatePercent: number;
+    termWeeks: number;
+    weeklyRepayment: number;
+    totalRepayment: number;
+}
+
 export interface FinanceRecoveryPreviewsData {
     boardSupport: BoardSupportPreviewData | null;
     sponsorPitch: SponsorPitchPreviewData | null;
     marketingCampaign: MarketingCampaignPreviewData | null;
+    bankLoan: BankLoanPreviewData | null;
 }
 
 export interface FinanceSnapshotData {
@@ -112,6 +134,7 @@ function mapSnapshot(
         weeklyRecurringIncome: snapshot.weekly_recurring_income,
         weeklySponsorIncome: snapshot.weekly_sponsor_income,
         weeklyMerchandiseIncome: snapshot.weekly_merchandise_income,
+        weeklyLoanRepayment: snapshot.weekly_loan_repayment,
         projectedWeeklyNet: snapshot.projected_weekly_net,
         cashRunwayWeeks: snapshot.cash_runway_weeks,
         wageBudgetUsagePercent: snapshot.wage_budget_usage_percent,
@@ -153,6 +176,21 @@ function mapPreviews(
                 cooldownDays: previews.marketing_campaign.cooldown_days,
             }
             : null,
+        bankLoan: previews?.bank_loan
+            ? mapBankLoanPreview(previews.bank_loan)
+            : null,
+    };
+}
+
+function mapBankLoanPreview(
+    preview: BackendBankLoanPreviewData,
+): BankLoanPreviewData {
+    return {
+        principal: preview.principal,
+        interestRatePercent: preview.interest_rate_percent,
+        termWeeks: preview.term_weeks,
+        weeklyRepayment: preview.weekly_repayment,
+        totalRepayment: preview.total_repayment,
     };
 }
 
@@ -169,5 +207,85 @@ export async function getFinanceSnapshot(
     return {
         snapshot: mapSnapshot(response.snapshot),
         previews: mapPreviews(response.previews),
+    };
+}
+
+interface BackendBankLoanResultData {
+    message_id: string;
+    principal: number;
+    interest_rate_percent: number;
+    term_weeks: number;
+    weekly_repayment: number;
+    total_repayment: number;
+}
+
+interface BackendBankLoanResponseData {
+    game: GameStateData;
+    result: BackendBankLoanResultData;
+}
+
+interface BackendBankLoanRepaymentResultData {
+    message_id: string;
+    amount_paid: number;
+}
+
+interface BackendBankLoanRepaymentResponseData {
+    game: GameStateData;
+    result: BackendBankLoanRepaymentResultData;
+}
+
+export interface BankLoanActionResultData {
+    messageId: string;
+    principal: number;
+    interestRatePercent: number;
+    termWeeks: number;
+    weeklyRepayment: number;
+    totalRepayment: number;
+}
+
+export interface BankLoanActionResponseData {
+    game: GameStateData;
+    result: BankLoanActionResultData;
+}
+
+export interface BankLoanRepaymentResultData {
+    messageId: string;
+    amountPaid: number;
+}
+
+export interface BankLoanRepaymentResponseData {
+    game: GameStateData;
+    result: BankLoanRepaymentResultData;
+}
+
+export async function requestBankLoan(): Promise<BankLoanActionResponseData> {
+    const response = await invoke<BackendBankLoanResponseData>(
+        "request_bank_loan",
+    );
+
+    return {
+        game: response.game,
+        result: {
+            messageId: response.result.message_id,
+            principal: response.result.principal,
+            interestRatePercent: response.result.interest_rate_percent,
+            termWeeks: response.result.term_weeks,
+            weeklyRepayment: response.result.weekly_repayment,
+            totalRepayment: response.result.total_repayment,
+        },
+    };
+}
+
+export async function repayBankLoan(): Promise<BankLoanRepaymentResponseData> {
+    const response = await invoke<BackendBankLoanRepaymentResponseData>(
+        "repay_bank_loan",
+    );
+
+    return {
+        game: response.game,
+        result: {
+            messageId: response.result.message_id,
+            amountPaid: response.result.amount_paid,
+        },
     };
 }
